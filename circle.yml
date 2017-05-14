@@ -9,7 +9,7 @@ machine:
     - mkdir -p download
     - test -e download/$GODIST || curl -o download/$GODIST https://storage.googleapis.com/golang/$GODIST
     - sudo rm -rf /usr/local/go
-    - sudo tar -C /usr/local -xzf download/$GODIST  
+    - sudo tar -C /usr/local -xzf download/$GODIST
 dependencies:
   pre:    
     # Sanity check that our go version is installed
@@ -17,7 +17,7 @@ dependencies:
     # Compiler and release tools
     - go get github.com/mitchellh/gox
     - go get github.com/tcnksm/ghr
-    override:
+  override:
     # Create our project workspace
     - mkdir -p "$PROJECT_DIR"
     # Go configuration on CircleCI is wonky.  Make our code
