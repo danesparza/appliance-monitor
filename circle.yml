@@ -42,8 +42,6 @@ test:
     - mkdir -p "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/lib/systemd/system"
     - ls -R "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}"
     # Copy our assets and create our debian package
-    # For now, just see if this command even works
-    - dpkg
 deployment:
   release:
     branch: master
