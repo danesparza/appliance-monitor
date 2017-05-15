@@ -1,0 +1,7 @@
+Package: appliance-monitor
+Version: 1.0
+Architecture: armhf
+Maintainer: Dan Esparza <esparza.dan@gmail.com>
+Installed-Size: 4500
+Homepage: https://github.com/danesparza/appliance-monitor
+Description: IoT monitoring system for laundry machines, dishwashers and other non-connected appliances

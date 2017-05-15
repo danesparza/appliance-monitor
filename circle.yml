@@ -20,10 +20,9 @@ dependencies:
   override:
     # Create our project workspace
     - mkdir -p "$PROJECT_DIR"
-    # Go configuration on CircleCI is wonky.  Make our code
+    # Go configuration on CircleCI is wonky.  Make sure our code
     # is in the correct Go workspace structure    
     - rsync -azC --delete ./ --include=".git" "$PROJECT_DIR"
-    - env GOOS=windows go get -d -v $PACKAGE_PATH/...
     - go get -t -d -v $PACKAGE_PATH/...
   cache_directories:
     - ~/download
@@ -35,7 +34,7 @@ test:
   post:
     # Multi-platform compile with version information
     - cd $PROJECT_DIR
-    - gox -parallel=4 -ldflags "-X $PACKAGE_PATH/cmd.buildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.commitId=$CIRCLE_SHA1" -output "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...
+    - gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.buildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.commitId=$CIRCLE_SHA1" -output "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...
     # Setup our debian package
     - mkdir -p "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/DEBIAN"
     - mkdir -p "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/usr/bin"
@@ -43,6 +42,8 @@ test:
     - mkdir -p "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/lib/systemd/system"
     - ls -R "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}"
     # Copy our assets and create our debian package
+    # For now, just see if this command even works
+    - dpkg
 deployment:
   release:
     branch: master

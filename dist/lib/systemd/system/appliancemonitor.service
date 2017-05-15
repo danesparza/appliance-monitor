@@ -1,0 +1,10 @@
+[Unit]
+Description=Appliance monitor service
+
+[Service]
+User=root
+Group=root
+ExecStart=/usr/bin/appliance-monitor start --config=/etc/appliance-monitor/config.yaml
+
+[Install]
+WantedBy=multi-user.target
