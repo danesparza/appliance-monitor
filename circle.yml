@@ -37,8 +37,8 @@ test:
     - gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.buildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.commitId=$CIRCLE_SHA1" -output "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...
     # Setup our debian package
     - cp -r "${PROJECT_DIR}/dist" "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}"
-    - chmod 750 "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/DEBIAN/postinst"
-    - chmod 750 "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/DEBIAN/prerm"
+    - chmod 755 "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/DEBIAN/postinst"
+    - chmod 755 "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/DEBIAN/prerm"
     # Copy our binary and create our debian package
     - mkdir -p "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/usr/bin"
     - cp "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_linux_arm" "/tmp/${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BUILD_NUM}/usr/bin"
