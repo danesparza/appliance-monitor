@@ -1,5 +1,5 @@
 Package: appliance-monitor
-Version: 1.0
+Version: 1.0.{build}
 Architecture: armhf
 Maintainer: Dan Esparza <esparza.dan@gmail.com>
 Installed-Size: 4500
