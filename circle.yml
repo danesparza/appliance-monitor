@@ -46,7 +46,7 @@ test:
     - tokenreplace -file "/tmp/${DEBIAN_PACKAGE_NAME}/DEBIAN/control" -token="{build}" -replacement="${CIRCLE_BUILD_NUM}"
     # Copy our binary and create our debian package
     - mkdir -p "/tmp/${DEBIAN_PACKAGE_NAME}/usr/bin"
-    - cp "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_linux_arm" "/tmp/${DEBIAN_PACKAGE_NAME}/usr/bin"
+    - cp "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_linux_arm" "/tmp/${DEBIAN_PACKAGE_NAME}/usr/bin/${CIRCLE_PROJECT_REPONAME}"
     - cd /tmp; dpkg -b "${DEBIAN_PACKAGE_NAME}"; mv *.deb "${CIRCLE_ARTIFACTS}";
 deployment:
   release:
