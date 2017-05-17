@@ -1,9 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/danesparza/appliance-monitor/api"
 	"github.com/gorilla/mux"
@@ -49,15 +54,36 @@ func serve(cmd *cobra.Command, args []string) {
 	//	Websocket connections
 	// Router.Handle("/ws", api.WsHandler{H: api.WsHub})
 
+	//	Trap program exit appropriately
+	ctx, cancel := context.WithCancel(context.Background())
+	sigch := make(chan os.Signal, 2)
+	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
+	go handleSignals(sigch, ctx, cancel)
+
+	//	Start the collection ticker
+	go func() {
+
+		//	Loop and respond to channels:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(1 * time.Second):
+				//	Perform sensor data gathering
+				log.Printf("[INFO] Tick at %v \n", time.Now())
+			}
+		}
+	}()
+
 	//	If we don't have a UI directory specified...
 	/*
 		if viper.GetString("server.ui-dir") == "" {
 			//	Use the static assets file generated with
-			//	https://github.com/elazarl/go-bindata-assetfs using the centralconfig-ui from
-			//	https://github.com/danesparza/centralconfig-ui.
+			//	https://github.com/elazarl/go-bindata-assetfs using the application-monitor-ui from
+			//	https://github.com/danesparza/application-monitor-ui.
 			//
 			//	To generate this file, place the 'ui'
-			//	directory under the main centralconfig directory and run the commands:
+			//	directory under the main application-monitor directory and run the commands:
 			//	go-bindata-assetfs.exe -pkg cmd ./ui/...
 			//	mv bindata_assetfs.go cmd
 			//	go install ./...
@@ -111,4 +137,18 @@ func init() {
 	viper.BindPFlag("server.ui-dir", startCmd.Flags().Lookup("ui-dir"))
 	viper.BindPFlag("server.allowed-origins", startCmd.Flags().Lookup("allowed-origins"))
 
+}
+
+func handleSignals(sigch <-chan os.Signal, ctx context.Context, cancel context.CancelFunc) {
+	select {
+	case <-ctx.Done():
+	case sig := <-sigch:
+		switch sig {
+		case os.Interrupt:
+			log.Println("SIGINT")
+		case syscall.SIGTERM:
+			log.Println("SIGTERM")
+		}
+		cancel()
+	}
 }
