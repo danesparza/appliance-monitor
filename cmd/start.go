@@ -15,7 +15,7 @@ import (
 	"github.com/danesparza/embd/sensor/envirophat"
 	"github.com/gorilla/mux"
 	"github.com/gregdel/pushover"
-	client "github.com/influxdb/influxdb/client/v2"
+	client "github.com/influxdata/influxdb/client/v2"
 	"github.com/kidoman/embd"
 	_ "github.com/kidoman/embd/host/rpi" // This loads the RPi driver
 	"github.com/montanaflynn/stats"
