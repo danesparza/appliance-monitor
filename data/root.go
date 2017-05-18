@@ -2,15 +2,9 @@ package data
 
 import "time"
 
-// ActivityRequest represents an API request for activity
-type ActivityRequest struct {
-	StartTime time.Time `json:"starttime"`
-	EndTime   time.Time `json:"endtime"`
-}
-
-// ActivityResponse represents an API response
-type ActivityResponse struct {
-	ID      int    `json:"id"`
-	Status  int    `json:"status"`
-	Message string `json:"message"`
+// CurrentState describes the current running state of the application
+type CurrentState struct {
+	ServerStartTime    time.Time `json:"starttime"`
+	ApplicationVersion string    `json:"appversion"`
+	DeviceRunning      bool      `json:"devicerunning"`
 }

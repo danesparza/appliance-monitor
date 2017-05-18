@@ -7,8 +7,12 @@ import (
 )
 
 var (
-	buildVersion = "Unknown"
-	commitId     string
+	// BuildVersion contains the version information for the app
+	BuildVersion = "Unknown"
+
+	// CommitID is the git commitId for the app.  It's filled in as
+	// part of the automated build
+	CommitID string
 )
 
 // versionCmd represents the version command
@@ -18,11 +22,11 @@ var versionCmd = &cobra.Command{
 	Long:  `Shows version information and exits`,
 	Run: func(cmd *cobra.Command, args []string) {
 		//	Show the version number
-		fmt.Printf("\nAppliance monitor version %s", buildVersion)
+		fmt.Printf("\nAppliance monitor version %s", BuildVersion)
 
 		//	Show the commitid if available:
-		if commitId != "" {
-			fmt.Printf(" (%s)", commitId[:7])
+		if CommitID != "" {
+			fmt.Printf(" (%s)", CommitID[:7])
 		}
 
 		//	Trailing space and newline

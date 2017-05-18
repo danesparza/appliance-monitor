@@ -37,7 +37,7 @@ test:
   post:
     # Multi-platform compile with version information
     - cd $PROJECT_DIR
-    - gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.buildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.commitId=$CIRCLE_SHA1" -output "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...
+    - gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.BuildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.CommitID=$CIRCLE_SHA1" -output "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...
     # Setup our debian package
     - cp -r "${PROJECT_DIR}/dist" "/tmp/${DEBIAN_PACKAGE_NAME}"
     - chmod 755 "/tmp/${DEBIAN_PACKAGE_NAME}/DEBIAN/postinst"

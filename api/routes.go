@@ -4,7 +4,21 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"time"
+
 	"github.com/danesparza/appliance-monitor/data"
+)
+
+var (
+	// BuildVersion contains the version information for the app
+	BuildVersion = "Unknown"
+
+	// CommitID is the git commitId for the app.  It's filled in as
+	// part of the automated build
+	CommitID string
+
+	// ApplicationStartTime is the start time of the app
+	ApplicationStartTime = time.Now()
 )
 
 // GetActivity gets activity for the appliance for a given time range
@@ -34,6 +48,23 @@ func GetActivity(rw http.ResponseWriter, req *http.Request) {
 
 	//	If we found an item, return it (otherwise, return an empty item):
 	sendDataResponse(rw, "Activity found")
+}
+
+// GetCurrentState gets the current running state of the application
+func GetCurrentState(rw http.ResponseWriter, req *http.Request) {
+	//	req.Body is a ReadCloser -- we need to remember to close it:
+	defer req.Body.Close()
+
+	//	Get the current datastore:
+	currentState := data.CurrentState{
+		ServerStartTime:    ApplicationStartTime,
+		DeviceRunning:      false,
+		ApplicationVersion: BuildVersion,
+	}
+
+	//	Serialize to JSON & return the response:
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(rw).Encode(currentState)
 }
 
 //	Used to send back an error:
