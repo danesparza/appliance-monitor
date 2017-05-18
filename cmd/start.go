@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,7 +12,13 @@ import (
 	"time"
 
 	"github.com/danesparza/appliance-monitor/api"
+	"github.com/danesparza/embd/sensor/envirophat"
 	"github.com/gorilla/mux"
+	"github.com/gregdel/pushover"
+	client "github.com/influxdb/influxdb/client/v2"
+	"github.com/kidoman/embd"
+	_ "github.com/kidoman/embd/host/rpi" // This loads the RPi driver
+	"github.com/montanaflynn/stats"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,7 +31,7 @@ var (
 	allowedOrigins    string
 
 	maxPoints             = 120
-	applianceRunThreshold = 8
+	applianceRunThreshold = float64(8)
 )
 
 // startCmd represents the start command
@@ -58,10 +65,55 @@ func serve(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigch := make(chan os.Signal, 2)
 	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
-	go handleSignals(sigch, ctx, cancel)
+	go handleSignals(ctx, sigch, cancel)
 
 	//	Start the collection ticker
 	go func() {
+
+		log.Println("Initializing GPIO...")
+		embd.InitGPIO()
+		defer embd.CloseGPIO()
+
+		pin, err := embd.NewDigitalPin("GPIO_4")
+		if err != nil {
+			log.Fatal("opening pin:", err)
+		}
+		defer resetPin(pin)
+
+		if err = pin.SetDirection(embd.Out); err != nil {
+			log.Fatal("setting pin direction:", err)
+		}
+
+		log.Println("Initializing I2C...")
+		if err := embd.InitI2C(); err != nil {
+			panic(err)
+		}
+		defer embd.CloseI2C()
+
+		bus := embd.NewI2CBus(1)
+		sensor := envirophat.New(bus)
+
+		log.Println("Initializing InfluxDB client...")
+		c, err := client.NewHTTPClient(client.HTTPConfig{Addr: "http://chile.lan:8086"})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Pushover client settings
+		log.Println("Initializing Pushover client...")
+		pushClient := pushover.New("ad2ujxv7zi7i5zw8fuvt5hu3chjuv4")
+		recipient := pushover.NewRecipient("gqukgkJyLtchaLE41WUEJ2qFM7Q3tb")
+
+		hostname, _ := os.Hostname()
+		log.Printf("Using hostname %v...", hostname)
+
+		//	Keep track of the axis values
+		var xaxis, yaxis, zaxis []float64
+		var xdev, ydev, zdev []float64
+
+		//	Keep track of state of device
+		currentlyRunning := false
+		timeStart := time.Now()
 
 		//	Loop and respond to channels:
 		for {
@@ -70,7 +122,120 @@ func serve(cmd *cobra.Command, args []string) {
 				return
 			case <-time.After(1 * time.Second):
 				//	Perform sensor data gathering
-				log.Printf("[INFO] Tick at %v \n", time.Now())
+				pin.Write(embd.High)
+
+				// Create a new point batch
+				bp, err := client.NewBatchPoints(client.BatchPointsConfig{
+					Database:  "sensors",
+					Precision: "s",
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				//	Get accelerometer values from the sensor
+				x, y, z, err := sensor.Accelerometer()
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				//	Track the measurements
+				xaxis = append(xaxis, x)
+				yaxis = append(yaxis, y)
+				zaxis = append(zaxis, z)
+
+				//	Calculate standard deviation
+				xdevcurrent, err := stats.StandardDeviation(xaxis)
+				if err != nil {
+					log.Fatal(err)
+				}
+				xdev = append(xdev, xdevcurrent)
+
+				ydevcurrent, err := stats.StandardDeviation(yaxis)
+				if err != nil {
+					log.Fatal(err)
+				}
+				ydev = append(ydev, ydevcurrent)
+
+				zdevcurrent, err := stats.StandardDeviation(zaxis)
+				if err != nil {
+					log.Fatal(err)
+				}
+				zdev = append(zdev, zdevcurrent)
+
+				//	Keep a rolling collection of data...
+				//	If we already have maxPoints items
+				//	remove the first item:
+				if len(xaxis) > maxPoints {
+					xaxis = xaxis[1:]
+				}
+
+				if len(yaxis) > maxPoints {
+					yaxis = yaxis[1:]
+				}
+
+				if len(zaxis) > maxPoints {
+					zaxis = zaxis[1:]
+				}
+
+				if len(zdev) > maxPoints {
+					xdev = xdev[1:]
+				}
+
+				if len(ydev) > maxPoints {
+					ydev = ydev[1:]
+				}
+
+				if len(zdev) > maxPoints {
+					zdev = zdev[1:]
+				}
+
+				// Create a point and add to batch
+				tags := map[string]string{"host": hostname}
+				fields := map[string]interface{}{
+					"x":    x,
+					"y":    y,
+					"z":    z,
+					"xdev": xdevcurrent,
+					"ydev": ydevcurrent,
+					"zdev": zdevcurrent}
+
+				pt, err := client.NewPoint("envirophat-lsm303d", tags, fields, time.Now())
+				if err != nil {
+					log.Fatal(err)
+				}
+				bp.AddPoint(pt)
+
+				// Write the batch
+				if err := c.Write(bp); err != nil {
+					log.Fatal(err)
+				}
+
+				//	Calculate ... are we currently running?
+				if ((xdevcurrent * 1000) > applianceRunThreshold) && ((ydevcurrent * 1000) > applianceRunThreshold) && ((zdevcurrent * 1000) > applianceRunThreshold) && currentlyRunning == false {
+					log.Println("Looks like the machine is running")
+					currentlyRunning = true
+					timeStart = time.Now()
+				}
+
+				if ((xdevcurrent * 1000) < applianceRunThreshold) && ((ydevcurrent * 1000) < applianceRunThreshold) && ((zdevcurrent * 1000) < applianceRunThreshold) && currentlyRunning == true {
+					log.Println("Looks like the machine is stopped")
+					currentlyRunning = false
+
+					//	Calculate the run time:
+					runningTime := time.Since(timeStart)
+
+					// Send the message to the recipient
+					message := pushover.NewMessage(fmt.Sprintf("The dryer has finished running.  It ran for about %v minutes", int(runningTime.Minutes())))
+					message.Sound = "bike"
+					_, err := pushClient.SendMessage(message, recipient)
+					if err != nil {
+						log.Printf("Error sending pushover message: %v\n", err)
+					}
+				}
+
+				pin.Write(embd.Low)
+
 			}
 		}
 	}()
@@ -139,16 +304,25 @@ func init() {
 
 }
 
-func handleSignals(sigch <-chan os.Signal, ctx context.Context, cancel context.CancelFunc) {
+func handleSignals(ctx context.Context, sigch <-chan os.Signal, cancel context.CancelFunc) {
 	select {
 	case <-ctx.Done():
 	case sig := <-sigch:
 		switch sig {
 		case os.Interrupt:
-			log.Println("SIGINT")
+			log.Println("[INFO] SIGINT")
 		case syscall.SIGTERM:
-			log.Println("SIGTERM")
+			log.Println("[INFO] SIGTERM")
 		}
+		log.Println("[INFO] Shutting down ...")
 		cancel()
+		os.Exit(0)
 	}
+}
+
+func resetPin(pin embd.DigitalPin) {
+	if err := pin.SetDirection(embd.In); err != nil {
+		log.Fatal("resetting pin:", err)
+	}
+	pin.Close()
 }
