@@ -1,6 +1,7 @@
 package data
 
 import (
+	"bytes"
 	"encoding/json"
 	"time"
 
@@ -23,8 +24,8 @@ const (
 
 // Activity represents a single activity event
 type Activity struct {
-	DateTime time.Time `json:"time"`
-	Type     EventType `json:"eventtype"`
+	Timestamp time.Time `json:"timestamp"`
+	Type      EventType `json:"eventtype"`
 }
 
 // ActivityDB is the BoltDB database for activity information
@@ -52,8 +53,10 @@ func (store ActivityDB) Set(activityItem Activity) (Activity, error) {
 			return err
 		}
 
-		//	Set the current datetime:
-		activityItem.DateTime = time.Now()
+		//	Set the current datetime if needed:
+		if activityItem.Timestamp.IsZero() {
+			activityItem.Timestamp = time.Now()
+		}
 
 		//	Serialize to JSON format
 		encoded, err := json.Marshal(activityItem)
@@ -62,11 +65,96 @@ func (store ActivityDB) Set(activityItem Activity) (Activity, error) {
 		}
 
 		//	Store it, with the 'name' as the key:
-		return b.Put([]byte(activityItem.DateTime.Format(time.RFC3339)), encoded)
+		return b.Put([]byte(activityItem.Timestamp.Format(time.RFC3339)), encoded)
 	})
 
 	//	Set our return item:
 	retval = activityItem
 
 	return retval, err
+}
+
+// GetRange gets all activities in a given range
+func (store ActivityDB) GetRange(startDate, endDate time.Time) ([]Activity, error) {
+	retval := []Activity{}
+
+	//	Open the database:
+	db, err := bolt.Open(store.Database, 0600, nil)
+	defer db.Close()
+	if err != nil {
+		return retval, err
+	}
+
+	//	Get the items in the given range:
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("activities"))
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+
+		// Format our timespan:
+		min := []byte(startDate.Format(time.RFC3339))
+		max := []byte(endDate.Format(time.RFC3339))
+
+		// Iterate over the timespan
+		for k, v := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, v = c.Next() {
+
+			//	Unmarshal data into our config item
+			activity := Activity{}
+			if err := json.Unmarshal(v, &activity); err != nil {
+				return err
+			}
+
+			//	Add to the return slice:
+			retval = append(retval, activity)
+		}
+
+		return nil
+	})
+
+	//	Return our slice:
+	return retval, err
+}
+
+// GetAllActivity returns all activity
+func (store ActivityDB) GetAllActivity() ([]Activity, error) {
+	retval := []Activity{}
+
+	//	Open the database:
+	db, err := bolt.Open(store.Database, 0600, nil)
+	defer db.Close()
+	if err != nil {
+		return retval, err
+	}
+
+	//	Get all the items:
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("activities"))
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			//	Unmarshal data into our config item
+			activity := Activity{}
+			if err := json.Unmarshal(v, &activity); err != nil {
+				return err
+			}
+
+			//	Add to the return slice:
+			retval = append(retval, activity)
+		}
+
+		return nil
+	})
+
+	//	Return our slice:
+	return retval, nil
 }
