@@ -171,3 +171,59 @@ func TestActivity_GetAllActivity_ItemsInDB_ReturnsItems(t *testing.T) {
 		t.Errorf("Get range failed: Should have gotten all items")
 	}
 }
+
+func TestActivity_DeleteRange_ItemsInRange_DeletesItems(t *testing.T) {
+	//	Arrange
+	filename := "testactivity.db"
+	defer os.Remove(filename)
+
+	db := data.ActivityDB{
+		Database: filename}
+
+	//	Try storing some config items:
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-1 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-2 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-3 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-4 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-5 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	//	Act
+	response1, err1 := db.GetRange(time.Now().Add(-10*time.Minute), time.Now())
+	errDel := db.DeleteRange(time.Now().Add(-10*time.Minute), time.Now().Add(-4*time.Minute))
+	response2, err2 := db.GetRange(time.Now().Add(-10*time.Minute), time.Now())
+
+	//	Assert
+	if err1 != nil {
+		t.Errorf("Get range failed: Should have gotten the 1st range without error: %s", err1)
+	}
+
+	if err2 != nil {
+		t.Errorf("Get range failed: Should have gotten the 2nd range without error: %s", err1)
+	}
+
+	if errDel != nil {
+		t.Errorf("DeleteRange failed:  Should have removed the range without error: %s", errDel)
+	}
+
+	if len(response1) == len(response2) {
+		t.Errorf("The remove didn't work: Should have gotten different counts.  Instead, got %v", len(response1))
+	}
+
+	if len(response2) != 3 {
+		t.Errorf("The remove didn't remove the correct number: Should have 3 items left.  Instead, got %v", len(response2))
+	}
+}
