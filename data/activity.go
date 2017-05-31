@@ -33,8 +33,8 @@ type ActivityDB struct {
 	Database string
 }
 
-// Set inserts or updates the config item
-func (store ActivityDB) Set(activityItem Activity) (Activity, error) {
+// Add inserts or updates activities
+func (store ActivityDB) Add(activityItem Activity) (Activity, error) {
 
 	//	Our return item:
 	retval := Activity{}
@@ -157,4 +157,47 @@ func (store ActivityDB) GetAllActivity() ([]Activity, error) {
 
 	//	Return our slice:
 	return retval, nil
+}
+
+// DeleteRange removes all activities in a given range
+func (store ActivityDB) DeleteRange(startDate, endDate time.Time) error {
+
+	//	Open the database:
+	db, err := bolt.Open(store.Database, 0600, nil)
+	defer db.Close()
+	if err != nil {
+		return err
+	}
+
+	//	Get the items in the given range:
+	err = db.Update(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("activities"))
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+
+		// Format our timespan:
+		min := []byte(startDate.Format(time.RFC3339))
+		max := []byte(endDate.Format(time.RFC3339))
+
+		// Iterate over the timespan
+		for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+
+			//	Delete the key:
+			delerr := b.Delete(k)
+
+			//	If we have an error, return early and with the error
+			if delerr != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	//	Return
+	return nil
 }

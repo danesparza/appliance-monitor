@@ -53,7 +53,7 @@ func TestActivity_Set_Successful(t *testing.T) {
 		Type:      data.ApplianceRunning}
 
 	//	Act
-	response, err := db.Set(ct1)
+	response, err := db.Add(ct1)
 
 	//	Assert
 	if err != nil {
@@ -97,23 +97,23 @@ func TestActivity_GetRange_ItemsInRange_ReturnsItems(t *testing.T) {
 		Database: filename}
 
 	//	Try storing some config items:
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-1 * time.Minute),
 		Type:      data.ApplianceStopped})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-2 * time.Minute),
 		Type:      data.ApplianceStopped})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-3 * time.Minute),
 		Type:      data.ApplianceStopped})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-4 * time.Minute),
 		Type:      data.ApplianceStopped})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-5 * time.Minute),
 		Type:      data.ApplianceStopped})
 
@@ -139,23 +139,23 @@ func TestActivity_GetAllActivity_ItemsInDB_ReturnsItems(t *testing.T) {
 		Database: filename}
 
 	//	Try storing some config items:
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-1 * time.Minute),
 		Type:      data.ApplianceStopped})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-2 * time.Minute),
 		Type:      data.ApplianceRunning})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-3 * time.Minute),
 		Type:      data.ApplianceStopped})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-4 * time.Minute),
 		Type:      data.ApplianceRunning})
 
-	db.Set(data.Activity{
+	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-5 * time.Minute),
 		Type:      data.ApplianceStopped})
 
