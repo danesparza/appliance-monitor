@@ -109,3 +109,44 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 
 	return retval, err
 }
+
+// GetAll gets all config items in the system
+func (store ConfigDB) GetAll() ([]ConfigItem, error) {
+	//	Our return item:
+	retval := []ConfigItem{}
+
+	//	Open the database:
+	db, err := bolt.Open(store.Database, 0600, nil)
+	defer db.Close()
+	if err != nil {
+		return retval, err
+	}
+
+	//	Get all the items:
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("configItems"))
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			//	Unmarshal data into our config item
+			configItem := ConfigItem{}
+			if err := json.Unmarshal(v, &configItem); err != nil {
+				return err
+			}
+
+			//	Add to the return slice:
+			retval = append(retval, configItem)
+		}
+
+		return nil
+	})
+
+	//	Return our slice:
+	return retval, err
+}

@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"fmt"
+
 	"github.com/danesparza/appliance-monitor/data"
 )
 
@@ -123,5 +125,57 @@ func TestConfig_Set_ThenGet_Successful(t *testing.T) {
 
 	if response.Value != expectedValue {
 		t.Errorf("Get failed: Should have returned the value %s but returned %s instead", ct2.Value, response.Value)
+	}
+}
+
+func TestConfig_GetAll_NoItems_Successful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	NO ITEMS STORED
+
+	//	Act
+	response, err := db.GetAll()
+
+	//	Assert
+	if err != nil {
+		t.Errorf("GetAll failed: Should have returned config items without error: %s", err)
+	}
+
+	if len(response) != 0 {
+		t.Errorf("GetAll failed: Should have returned no config items but returned %v instead", len(response))
+	}
+}
+
+func TestConfig_GetAll_WithItems_Successful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	Try storing some config items:
+	maxItems := 20
+	for c := 1; c <= maxItems; c++ {
+		db.Set(data.ConfigItem{
+			Name:  fmt.Sprintf("TestItem%d", c),
+			Value: fmt.Sprintf("Value %d", c)})
+	}
+
+	//	Act
+	response, err := db.GetAll()
+
+	//	Assert
+	if err != nil {
+		t.Errorf("GetAll failed: Should have returned config items without error: %s", err)
+	}
+
+	if len(response) != maxItems {
+		t.Errorf("GetAll failed: Should have returned %d config items but returned %v instead", maxItems, len(response))
 	}
 }

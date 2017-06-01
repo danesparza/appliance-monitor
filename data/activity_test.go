@@ -118,7 +118,7 @@ func TestActivity_GetRange_ItemsInRange_ReturnsItems(t *testing.T) {
 		Type:      data.ApplianceStopped})
 
 	//	Act
-	response, err := db.GetRange(time.Now().Add(-4*time.Minute), time.Now())
+	response, err := db.GetRange(time.Now().Add(-4*time.Minute-10*time.Second), time.Now())
 
 	//	Assert
 	if err != nil {
