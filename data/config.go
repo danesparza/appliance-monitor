@@ -81,6 +81,8 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 	//	Our return item:
 	retval := ConfigItem{}
 
+	//	Get the default from config file
+
 	//	Open the database:
 	db, err := bolt.Open(store.Database, 0600, nil)
 	defer db.Close()
@@ -106,6 +108,8 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 
 		return nil
 	})
+
+	//	If we found an item, use that .. otherwise, use the default
 
 	return retval, err
 }

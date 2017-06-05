@@ -6,33 +6,55 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	jsonConfig bool
+	yamlConfig bool
+)
+
+var yamlDefault = []byte(`
+server:
+  bind: "127.0.0.1"
+  port: 3030
+  allowed-origins: "*"
+settings:
+  name: "appliance-monitor"
+  monitorwindow: 120
+`)
+
+var jsonDefault = []byte(`{
+	"server": {
+		"bind": "127.0.0.1",
+		"port": 3030,
+		"allowed-origins": "*"
+	},
+	"settings": {
+		"name": "appliance-monitor",
+		"monitorwindow": 120
+	}
+}`)
+
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Prints default server configuration files",
+	Long: `Use this to create a default configuration file for the appliance monitor  
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Example: 
+
+appliance-monitor config > config.yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
-		fmt.Println("config called")
+		if jsonConfig {
+			fmt.Printf("%s", jsonDefault)
+		} else if yamlConfig {
+			fmt.Printf("%s", yamlDefault)
+		}
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(configCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// configCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// configCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	configCmd.Flags().BoolVarP(&jsonConfig, "json", "j", false, "Create a JSON configuration file")
+	configCmd.Flags().BoolVarP(&yamlConfig, "yaml", "y", true, "Create a YAML configuration file")
 
 }
