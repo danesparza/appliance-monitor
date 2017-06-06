@@ -2,9 +2,17 @@ package data
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/spf13/viper"
+)
+
+const (
+	configPrefix = "application"
 )
 
 // ConfigDB is the BoltDB database for config information
@@ -34,6 +42,14 @@ func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 
 	//	Our return item:
 	retval := ConfigItem{}
+
+	//	If there is no config name, throw an error:
+	if strings.TrimSpace(configItem.Name) == "" {
+		return retval, errors.New("Config name can't be blank")
+	}
+
+	//	Format the config name:
+	configItem.Name = getFullConfigName(configItem.Name)
 
 	//	Open the database:
 	db, err := bolt.Open(store.Database, 0600, nil)
@@ -80,8 +96,10 @@ func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 	//	Our return item:
 	retval := ConfigItem{}
+	retval.Name = getFullConfigName(configName)
 
 	//	Get the default from config file
+	retval.Value = viper.GetString(retval.Name)
 
 	//	Open the database:
 	db, err := bolt.Open(store.Database, 0600, nil)
@@ -95,9 +113,9 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 		b := tx.Bucket([]byte("configItems"))
 
 		if b != nil {
-			configBytes := b.Get([]byte(configName))
+			configBytes := b.Get([]byte(retval.Name))
 
-			//	Need to make sure we got something back here before we try to unmarshal?
+			//	Need to make sure we got something back here before we try to unmarshal
 			if len(configBytes) > 0 {
 				//	Unmarshal data into our config item
 				if err := json.Unmarshal(configBytes, &retval); err != nil {
@@ -153,4 +171,8 @@ func (store ConfigDB) GetAll() ([]ConfigItem, error) {
 
 	//	Return our slice:
 	return retval, err
+}
+
+func getFullConfigName(configName string) string {
+	return fmt.Sprintf("%v.%v", configPrefix, configName)
 }

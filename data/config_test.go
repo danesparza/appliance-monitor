@@ -1,12 +1,14 @@
 package data_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
 	"fmt"
 
 	"github.com/danesparza/appliance-monitor/data"
+	"github.com/spf13/viper"
 )
 
 //	Sanity check: The database shouldn't exist yet
@@ -65,8 +67,65 @@ func TestConfig_Get_ItemDoesntExist_Successful(t *testing.T) {
 	}
 }
 
+//	Config get should return default even if the item doesn't exist in database
+func TestConfig_Get_ItemDoesntExistButHasDefault_Successful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+
+	viper.SetConfigType("yaml")
+	var yamlConfig = []byte(`
+application:
+  afirstconfigitem: somethinghere
+  itemwithdefault: thedefault
+  somethingelse: anothervalue
+`)
+	viper.ReadConfig(bytes.NewBuffer(yamlConfig)) // Read in the defaults from the config file
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	queryName := "itemwithdefault"
+	expectedValue := "thedefault"
+
+	//	Act
+	response, err := db.Get(queryName)
+
+	//	Assert
+	if err != nil {
+		t.Errorf("Get failed: Should have returned the default without error: %s", err)
+	}
+
+	if expectedValue != response.Value {
+		t.Errorf("Get failed: Should have returned the default %v instead of the value %s", expectedValue, response.Value)
+	}
+}
+
+//	Config set with no config name shouldn't work
+func TestConfig_Set_NoName_NotSuccessful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	Try storing some config items:
+	ct1 := data.ConfigItem{
+		Name:  "",
+		Value: "Value1"}
+
+	//	Act
+	_, err := db.Set(ct1)
+
+	//	Assert
+	if err == nil {
+		t.Errorf("Set failed: Should have thrown an error about no config name")
+	}
+}
+
 //	Config set should work
-func TestConfig_Set_Successful(t *testing.T) {
+func TestConfig_Set_ValidName_Successful(t *testing.T) {
 	//	Arrange
 	filename := "testing.db"
 	defer os.Remove(filename)
