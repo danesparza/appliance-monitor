@@ -56,8 +56,23 @@ func serve(cmd *cobra.Command, args []string) {
 
 	//	Setup our routes
 	// Router.HandleFunc("/", api.ShowUI)
-	Router.HandleFunc("/activity/get", api.GetActivity)
-	Router.HandleFunc("/currentstate", api.GetCurrentState)
+
+	//	Activities
+	Router.HandleFunc("/activities/get", api.GetActivity)
+	Router.HandleFunc("/activities/reset", nil)
+
+	//	Config
+	Router.HandleFunc("/config/getall", nil)
+	Router.HandleFunc("/config/get", nil)
+	Router.HandleFunc("/config/set", nil)
+
+	//	System information
+	Router.HandleFunc("/system/state", api.GetCurrentState)
+	Router.HandleFunc("/system/wifi", nil)
+
+	//	System resets
+	Router.HandleFunc("/reset/network", nil)
+	Router.HandleFunc("/reset/config", nil)
 
 	//	Websocket connections
 	// Router.Handle("/ws", api.WsHandler{H: api.WsHub})
