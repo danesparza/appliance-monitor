@@ -20,6 +20,8 @@ dependencies:
     - go get github.com/tcnksm/ghr
     # Utilities
     - go get github.com/danesparza/tokenreplace
+    # Unit test reports
+    - go get -u github.com/jstemmer/go-junit-report
   override:
     # Create our project workspace
     - mkdir -p "$PROJECT_DIR"
@@ -35,6 +37,9 @@ test:
   override:
     - go test -v -race $PACKAGE_PATH/...
   post:
+   # Publish test results in jUnit format (so CircleCI can report on tests better)
+    - mkdir $CIRCLE_TEST_REPORTS/junit
+    - go test -v -race $PACKAGE_PATH/... | go-junit-report > $CIRCLE_TEST_REPORTS/junit/junit.xml
     # Multi-platform compile with version information
     - cd $PROJECT_DIR
     - gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.BuildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.CommitID=$CIRCLE_SHA1" -output "${CIRCLE_ARTIFACTS}/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...
