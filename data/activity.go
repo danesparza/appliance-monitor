@@ -12,8 +12,11 @@ import (
 type EventType int
 
 const (
+	// ApplianceUknownState event is used when the state can't be determined
+	ApplianceUknownState EventType = iota
+
 	// ApplianceRunning event is signaled when the appliance appears to be running (vibrating)
-	ApplianceRunning EventType = iota
+	ApplianceRunning
 
 	// ApplianceStopped event is signaled when the appliance appears to be stopped (not vibrating)
 	ApplianceStopped
@@ -150,6 +153,40 @@ func (store ActivityDB) GetAllActivity() ([]Activity, error) {
 
 			//	Add to the return slice:
 			retval = append(retval, activity)
+		}
+
+		return nil
+	})
+
+	//	Return our slice:
+	return retval, nil
+}
+
+// GetLatestActivity returns the most recent activity (or an empty Activity if no activity found)
+func (store ActivityDB) GetLatestActivity() (Activity, error) {
+	retval := Activity{}
+
+	//	Open the database:
+	db, err := bolt.Open(store.Database, 0600, nil)
+	defer db.Close()
+	if err != nil {
+		return retval, err
+	}
+
+	//	Get all the items:
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("activities"))
+		if b == nil {
+			return nil
+		}
+
+		//	Get the last item:
+		_, v := b.Cursor().Last()
+
+		//	Unmarshal data into our config item
+		if err := json.Unmarshal(v, &retval); err != nil {
+			return err
 		}
 
 		return nil

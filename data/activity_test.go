@@ -227,3 +227,68 @@ func TestActivity_DeleteRange_ItemsInRange_DeletesItems(t *testing.T) {
 		t.Errorf("The remove didn't remove the correct number: Should have 3 items left.  Instead, got %v", len(response2))
 	}
 }
+
+func TestActivity_GetLatestActivity_NoItems_NoErrors(t *testing.T) {
+	//	Arrange
+	filename := "testactivity.db"
+	defer os.Remove(filename)
+
+	db := data.ActivityDB{
+		Database: filename}
+
+	//	No activities added
+
+	//	Act
+	response, err := db.GetLatestActivity()
+
+	//	Assert
+	if err != nil {
+		t.Errorf("Get latest failed: Should have gotten the range item without error: %s", err)
+	}
+
+	if response.Type != data.ApplianceUknownState {
+		t.Errorf("Get latest failed: Should have gotten default item back")
+	}
+}
+
+func TestActivity_GetLatestActivity_ItemsInDB_ReturnsMostRecentItem(t *testing.T) {
+	//	Arrange
+	filename := "testactivity.db"
+	defer os.Remove(filename)
+
+	db := data.ActivityDB{
+		Database: filename}
+
+	//	Try storing some config items:
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-1 * time.Minute),
+		Type:      data.ApplianceRunning})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-2 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-3 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-4 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	db.Add(data.Activity{
+		Timestamp: time.Now().Add(-5 * time.Minute),
+		Type:      data.ApplianceStopped})
+
+	//	Act
+	response, err := db.GetLatestActivity()
+
+	//	Assert
+	if err != nil {
+		t.Errorf("Get latest failed: Should have gotten the range item without error: %s", err)
+	}
+
+	if response.Type != data.ApplianceRunning {
+		t.Errorf("Get latest failed: Should have returned most recent item.  Instead, got %v / %v", response.Timestamp, response.Type)
+	}
+}
