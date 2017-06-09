@@ -50,7 +50,8 @@ func initConfig() {
 	viper.SetDefault("server.port", "3000")
 	viper.SetDefault("server.bind", "")
 	viper.SetDefault("server.allowed-origins", "*")
-	viper.SetDefault("datastore.database", "config.db")
+	viper.SetDefault("datastore.config", "config.db")
+	viper.SetDefault("datastore.activity", "activity.db")
 
 	viper.SetConfigName("config") // name of config file (without extension)
 	viper.AddConfigPath("$HOME")  // adding home directory as first search path

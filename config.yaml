@@ -1,0 +1,11 @@
+
+server:
+  bind: "127.0.0.1"
+  port: 3030
+  allowed-origins: "*"
+datastore:
+  activity: testactivity.db
+  config: config.db
+settings:
+  name: "appliance-monitor"
+  monitorwindow: 120

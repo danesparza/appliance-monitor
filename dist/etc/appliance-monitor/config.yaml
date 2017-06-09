@@ -1,5 +1,5 @@
 server:
   port: 3030
 datastore:
-  history: /var/lib/appliance-monitor/history.db
+  activity: /var/lib/appliance-monitor/activity.db
   config: /var/lib/appliance-monitor/config.db

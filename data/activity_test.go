@@ -270,7 +270,7 @@ func TestActivity_GetLatestActivity_ItemsInDB_ReturnsMostRecentItem(t *testing.T
 
 	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-3 * time.Minute),
-		Type:      data.ApplianceStopped})
+		Type:      data.ApplianceRunning})
 
 	db.Add(data.Activity{
 		Timestamp: time.Now().Add(-4 * time.Minute),

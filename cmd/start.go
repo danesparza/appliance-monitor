@@ -51,6 +51,9 @@ func serve(cmd *cobra.Command, args []string) {
 		log.Println("[INFO] Using config file:", viper.ConfigFileUsed())
 	}
 
+	log.Printf("[INFO] Config database: %s\n", viper.GetString("datastore.config"))
+	log.Printf("[INFO] Activities database: %s\n", viper.GetString("datastore.activity"))
+
 	//	Create a router and setup our REST endpoints...
 	var Router = mux.NewRouter()
 
@@ -58,8 +61,7 @@ func serve(cmd *cobra.Command, args []string) {
 	// Router.HandleFunc("/", api.ShowUI)
 
 	//	Activities
-	Router.HandleFunc("/activities/get", api.GetActivity)
-	Router.HandleFunc("/activities/reset", nil)
+	Router.HandleFunc("/activities/get", api.GetActivity).Methods("GET", "POST")
 
 	//	Config
 	Router.HandleFunc("/config/getall", nil)
@@ -67,7 +69,7 @@ func serve(cmd *cobra.Command, args []string) {
 	Router.HandleFunc("/config/set", nil)
 
 	//	System information
-	Router.HandleFunc("/system/state", api.GetCurrentState)
+	Router.HandleFunc("/system/state", api.GetCurrentState).Methods("GET")
 	Router.HandleFunc("/system/wifi", nil)
 
 	//	System resets
