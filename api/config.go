@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"fmt"
+
 	"github.com/danesparza/appliance-monitor/data"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -44,6 +46,57 @@ func GetConfigItem(rw http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		sendErrorResponse(rw, err, 500)
+		return
+	}
+
+	//	Serialize to JSON & return the response:
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(rw).Encode(response)
+}
+
+// RemoveConfigItem removes a single config item
+func RemoveConfigItem(rw http.ResponseWriter, req *http.Request) {
+
+	//	Get the config datastore:
+	configDB := data.ConfigDB{
+		Database: viper.GetString("datastore.config")}
+
+	//	Get the config name from the request:
+	configName := mux.Vars(req)["name"]
+
+	//	Send the request to the datastore and get a response:
+	err := configDB.Remove(configName)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusInternalServerError)
+		return
+	}
+
+	//	Serialize to JSON & return the response:
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(rw).Encode(fmt.Sprintf("Removed %s", configName))
+}
+
+// SetConfigItem adds or updates a single config item and returns the new item in JSON format
+func SetConfigItem(rw http.ResponseWriter, req *http.Request) {
+	//	req.Body is a ReadCloser -- we need to remember to close it:
+	defer req.Body.Close()
+
+	//	Decode the request if it was a POST:
+	request := data.ConfigItem{}
+	err := json.NewDecoder(req.Body).Decode(&request)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusBadRequest)
+		return
+	}
+
+	//	Get the config datastore:
+	configDB := data.ConfigDB{
+		Database: viper.GetString("datastore.config")}
+
+	//	Send the request to the datastore and get a response:
+	response, err := configDB.Set(request)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusInternalServerError)
 		return
 	}
 
