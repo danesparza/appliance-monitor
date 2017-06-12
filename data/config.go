@@ -89,6 +89,35 @@ func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 	return retval, err
 }
 
+// Remove removes the config item
+func (store ConfigDB) Remove(configName string) error {
+
+	//	If there is no config name, throw an error:
+	if strings.TrimSpace(configName) == "" {
+		return errors.New("Config name can't be blank")
+	}
+
+	//	Open the database:
+	db, err := bolt.Open(store.Database, 0600, nil)
+	defer db.Close()
+	if err != nil {
+		return err
+	}
+
+	//	Update the database:
+	err = db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte("configItems"))
+		if err != nil {
+			return err
+		}
+
+		//	Remove the item:
+		return b.Delete([]byte(configName))
+	})
+
+	return err
+}
+
 // Get fetches a config item
 func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 	//	Our return item:

@@ -387,3 +387,80 @@ settings:
 		t.Errorf("GetAll failed: Couldn't find the config item '%s'", configName)
 	}
 }
+
+//	Config set get remove get should work
+func TestConfig_Set_ThenRemove_Successful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+	defer viper.Reset()
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	Try storing some config items:
+	ct1 := data.ConfigItem{
+		Name:  "TestItem1",
+		Value: "Value1"}
+
+	ct2 := data.ConfigItem{
+		Name:  "TestItem2",
+		Value: "Value2"}
+
+	queryName := "TestItem1"
+	expectedValue := "Value1"
+
+	//	Act (set)
+	db.Set(ct1)
+	db.Set(ct2)
+	response, err := db.Get(queryName)
+
+	//	Assert (set)
+	if err != nil {
+		t.Errorf("Set then remove failed: Should have set a config item without error: %s", err)
+	}
+
+	if response.Value != expectedValue {
+		t.Errorf("Set then Get failed: Should have returned the value '%s' but returned '%s' instead", ct2.Value, response.Value)
+	}
+
+	if response.Name != queryName {
+		t.Errorf("Set then Get failed: Should have returned the value '%s' but returned '%s' instead", queryName, response.Name)
+	}
+
+	//	Act (remove)
+	err = db.Remove(queryName)
+	if err != nil {
+		t.Errorf("Set then remove failed: Should have removed a config item without error: %s", err)
+	}
+
+	response, err = db.Get(queryName)
+
+	//	Assert (remove)
+	if err != nil {
+		t.Errorf("Set then remove failed: Should have removed a config item without error: %s", err)
+	}
+
+	if response.Value != "" {
+		t.Errorf("Set then remove failed: Should not have returned an item")
+	}
+}
+
+//	Config set get remove get should work
+func TestConfig_Remove_ItemDoesntExist_NoErrors(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+	defer viper.Reset()
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	NO VALUES
+
+	//	Act
+	err := db.Remove("somebogusname")
+	if err != nil {
+		t.Errorf("Set then remove failed: Should have removed a config item without error: %s", err)
+	}
+}
