@@ -18,8 +18,6 @@ type CurrentState struct {
 
 // GetCurrentState gets the current running state of the application
 func GetCurrentState(rw http.ResponseWriter, req *http.Request) {
-	//	req.Body is a ReadCloser -- we need to remember to close it:
-	defer req.Body.Close()
 
 	//	Find out if the device is currently running:
 	activityDB := data.ActivityDB{

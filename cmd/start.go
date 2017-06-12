@@ -64,9 +64,9 @@ func serve(cmd *cobra.Command, args []string) {
 	Router.HandleFunc("/activities/get", api.GetActivity).Methods("GET", "POST")
 
 	//	Config
-	Router.HandleFunc("/config/getall", nil)
-	Router.HandleFunc("/config/get", nil)
-	Router.HandleFunc("/config/set", nil)
+	Router.HandleFunc("/config", api.GetAllConfig).Methods("GET")
+	Router.HandleFunc("/config/{name}", api.GetConfigItem).Methods("GET")
+	Router.HandleFunc("/config", nil).Methods("POST")
 
 	//	System information
 	Router.HandleFunc("/system/state", api.GetCurrentState).Methods("GET")

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	configPrefix = "application"
+	configPrefix = "settings"
 )
 
 // ConfigDB is the BoltDB database for config information
@@ -47,9 +47,6 @@ func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 	if strings.TrimSpace(configItem.Name) == "" {
 		return retval, errors.New("Config name can't be blank")
 	}
-
-	//	Format the config name:
-	configItem.Name = getFullConfigName(configItem.Name)
 
 	//	Open the database:
 	db, err := bolt.Open(store.Database, 0600, nil)
@@ -96,10 +93,14 @@ func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 	//	Our return item:
 	retval := ConfigItem{}
-	retval.Name = getFullConfigName(configName)
 
 	//	Get the default from config file
-	retval.Value = viper.GetString(retval.Name)
+	viperFormattedName := fmt.Sprintf("%v.%v", configPrefix, configName)
+	viperConfigValue := viper.GetString(viperFormattedName)
+	if viperConfigValue != "" {
+		retval.Name = configName
+		retval.Value = viperConfigValue
+	}
 
 	//	Open the database:
 	db, err := bolt.Open(store.Database, 0600, nil)
@@ -113,7 +114,7 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 		b := tx.Bucket([]byte("configItems"))
 
 		if b != nil {
-			configBytes := b.Get([]byte(retval.Name))
+			configBytes := b.Get([]byte(configName))
 
 			//	Need to make sure we got something back here before we try to unmarshal
 			if len(configBytes) > 0 {
@@ -128,7 +129,6 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 	})
 
 	//	If we found an item, use that .. otherwise, use the default
-
 	return retval, err
 }
 
@@ -136,6 +136,20 @@ func (store ConfigDB) Get(configName string) (ConfigItem, error) {
 func (store ConfigDB) GetAll() ([]ConfigItem, error) {
 	//	Our return item:
 	retval := []ConfigItem{}
+
+	//	Get the defaults from config file
+	if viper.InConfig(configPrefix) {
+		items := viper.GetStringMapString(configPrefix)
+
+		for k, v := range items {
+			configItem := ConfigItem{
+				Name:  k,
+				Value: v}
+
+			//	Add to the return slice:
+			retval = append(retval, configItem)
+		}
+	}
 
 	//	Open the database:
 	db, err := bolt.Open(store.Database, 0600, nil)
@@ -155,15 +169,35 @@ func (store ConfigDB) GetAll() ([]ConfigItem, error) {
 		c := b.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-
 			//	Unmarshal data into our config item
 			configItem := ConfigItem{}
 			if err := json.Unmarshal(v, &configItem); err != nil {
 				return err
 			}
 
-			//	Add to the return slice:
-			retval = append(retval, configItem)
+			//	See if we can find it in our defaults.  If we can, just
+			//	update the existing item.  Otherwise, add it
+			foundConfigItem := false
+
+			for i, v := range retval {
+				if v.Name == configItem.Name {
+
+					//	Update the item:
+					retval[i].ID = configItem.ID
+					retval[i].Value = configItem.Value
+					retval[i].LastUpdated = configItem.LastUpdated
+
+					//	Signal that we found the item:
+					foundConfigItem = true
+					break
+				}
+			}
+
+			if !foundConfigItem {
+				//	Add to the return slice:
+				retval = append(retval, configItem)
+			}
+
 		}
 
 		return nil
@@ -171,8 +205,4 @@ func (store ConfigDB) GetAll() ([]ConfigItem, error) {
 
 	//	Return our slice:
 	return retval, err
-}
-
-func getFullConfigName(configName string) string {
-	return fmt.Sprintf("%v.%v", configPrefix, configName)
 }
