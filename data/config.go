@@ -41,10 +41,10 @@ func (store ConfigDB) InitStore() error {
 func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 
 	//	Our return item:
-	retval := ConfigItem{}
+	retval := configItem
 
 	//	If there is no config name, throw an error:
-	if strings.TrimSpace(configItem.Name) == "" {
+	if strings.TrimSpace(retval.Name) == "" {
 		return retval, errors.New("Config name can't be blank")
 	}
 
@@ -65,26 +65,23 @@ func (store ConfigDB) Set(configItem ConfigItem) (ConfigItem, error) {
 		// If we don't have an id, generate an id for the configitem.
 		// This returns an error only if the Tx is closed or not writeable.
 		// That can't happen in an Update() call so I ignore the error check.
-		if configItem.ID == 0 {
+		if retval.ID == 0 {
 			id, _ := b.NextSequence()
-			configItem.ID = int64(id)
+			retval.ID = int64(id)
 		}
 
 		//	Set the current datetime:
-		configItem.LastUpdated = time.Now()
+		retval.LastUpdated = time.Now()
 
 		//	Serialize to JSON format
-		encoded, err := json.Marshal(configItem)
+		encoded, err := json.Marshal(retval)
 		if err != nil {
 			return err
 		}
 
 		//	Store it, with the 'name' as the key:
-		return b.Put([]byte(configItem.Name), encoded)
+		return b.Put([]byte(retval.Name), encoded)
 	})
-
-	//	Set our return item:
-	retval = configItem
 
 	return retval, err
 }
