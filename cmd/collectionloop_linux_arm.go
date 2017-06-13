@@ -9,7 +9,7 @@ import (
 
 	"github.com/danesparza/appliance-monitor/data"
 	"github.com/gregdel/pushover"
-	influxdb "github.com/influxdb/influxdb/client/v2"
+	influxdb "github.com/influxdata/influxdb/client/v2"
 	"github.com/montanaflynn/stats"
 	"github.com/spf13/viper"
 
