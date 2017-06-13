@@ -9,3 +9,4 @@ datastore:
 settings:
   name: "appliance-monitor"
   monitorwindow: 120
+  pushoverapikey: "ad2ujxv7zi7i5zw8fuvt5hu3chjuv4"

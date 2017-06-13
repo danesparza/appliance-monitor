@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	/*
 		Raspberry pi specific imports:
@@ -17,8 +19,13 @@ import (
 	*/
 
 	"github.com/danesparza/appliance-monitor/api"
+	"github.com/danesparza/appliance-monitor/data"
+	"github.com/danesparza/embd/sensor/envirophat"
 	"github.com/gorilla/mux"
+	"github.com/gregdel/pushover"
+	client "github.com/influxdb/influxdb/client/v2"
 	"github.com/kidoman/embd"
+	"github.com/montanaflynn/stats"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -54,6 +61,12 @@ func serve(cmd *cobra.Command, args []string) {
 	log.Printf("[INFO] Config database: %s\n", viper.GetString("datastore.config"))
 	log.Printf("[INFO] Activities database: %s\n", viper.GetString("datastore.activity"))
 
+	//	Connect to the datastores:
+	configDB := data.ConfigDB{
+		Database: viper.GetString("datastore.config")}
+	activityDB := data.ActivityDB{
+		Database: viper.GetString("datastore.activity")}
+
 	//	Create a router and setup our REST endpoints...
 	var Router = mux.NewRouter()
 
@@ -61,7 +74,8 @@ func serve(cmd *cobra.Command, args []string) {
 	// Router.HandleFunc("/", api.ShowUI)
 
 	//	Activities
-	Router.HandleFunc("/activities/get", api.GetActivity).Methods("GET", "POST")
+	Router.HandleFunc("/activity", api.GetAllActivity).Methods("GET")
+	Router.HandleFunc("/activity", api.GetActivityInRange).Methods("POST")
 
 	//	Config
 	Router.HandleFunc("/config", api.GetAllConfig).Methods("GET")
@@ -86,179 +100,192 @@ func serve(cmd *cobra.Command, args []string) {
 	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
 	go handleSignals(ctx, sigch, cancel)
 
-	/*
-		//	Start the collection ticker
-		go func() {
-			log.Println("Initializing GPIO...")
-			embd.InitGPIO()
-			defer embd.CloseGPIO()
+	//	Start the collection ticker
+	go func() {
+		log.Println("[INFO] Initializing GPIO...")
+		err := embd.InitGPIO()
+		if err != nil {
+			log.Fatal("[ERROR] Initializing GPIO:", err)
+		}
+		defer embd.CloseGPIO()
 
-			pin, err := embd.NewDigitalPin("GPIO_4")
-			if err != nil {
-				log.Fatal("opening pin:", err)
-			}
-			defer resetPin(pin)
+		pin, err := embd.NewDigitalPin("GPIO_4")
+		if err != nil {
+			log.Fatal("[ERROR] opening pin:", err)
+		}
+		defer resetPin(pin)
 
-			if err = pin.SetDirection(embd.Out); err != nil {
-				log.Fatal("setting pin direction:", err)
-			}
+		if err = pin.SetDirection(embd.Out); err != nil {
+			log.Fatal("[ERROR] setting pin direction:", err)
+		}
 
-			log.Println("Initializing I2C...")
-			if err := embd.InitI2C(); err != nil {
-				panic(err)
-			}
-			defer embd.CloseI2C()
+		log.Println("[INFO] Initializing I2C...")
+		if err := embd.InitI2C(); err != nil {
+			log.Fatal("[ERROR] Initalizing I2C:", err)
+		}
+		defer embd.CloseI2C()
 
-			bus := embd.NewI2CBus(1)
-			sensor := envirophat.New(bus)
+		bus := embd.NewI2CBus(1)
+		sensor := envirophat.New(bus)
 
-			log.Println("Initializing InfluxDB client...")
-			c, err := client.NewHTTPClient(client.HTTPConfig{Addr: "http://chile.lan:8086"})
-			if err != nil {
-				log.Fatal(err)
-			}
+		hostname, _ := os.Hostname()
+		log.Printf("[INFO] Using hostname %v...", hostname)
 
-			// Pushover client settings
-			log.Println("Initializing Pushover client...")
-			pushClient := pushover.New("ad2ujxv7zi7i5zw8fuvt5hu3chjuv4")
-			recipient := pushover.NewRecipient("gqukgkJyLtchaLE41WUEJ2qFM7Q3tb")
+		//	Keep track of the axis values
+		var xaxis, yaxis, zaxis []float64
+		var xdev, ydev, zdev []float64
 
-			hostname, _ := os.Hostname()
-			log.Printf("Using hostname %v...", hostname)
+		//	Keep track of state of device
+		currentlyRunning := false
+		timeStart := time.Now()
 
-			//	Keep track of the axis values
-			var xaxis, yaxis, zaxis []float64
-			var xdev, ydev, zdev []float64
+		//	Loop and respond to channels:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(1 * time.Second):
+				//	Perform sensor data gathering
+				pin.Write(embd.High)
 
-			//	Keep track of state of device
-			currentlyRunning := false
-			timeStart := time.Now()
+				// Create a new point batch
+				bp, err := client.NewBatchPoints(client.BatchPointsConfig{
+					Database:  "sensors",
+					Precision: "s",
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
 
-			//	Loop and respond to channels:
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(1 * time.Second):
-					//	Perform sensor data gathering
-					pin.Write(embd.High)
+				//	Get accelerometer values from the sensor
+				x, y, z, err := sensor.Accelerometer()
+				if err != nil {
+					log.Fatal(err)
+				}
 
-					// Create a new point batch
-					bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-						Database:  "sensors",
-						Precision: "s",
-					})
+				//	Track the measurements
+				xaxis = append(xaxis, x)
+				yaxis = append(yaxis, y)
+				zaxis = append(zaxis, z)
+
+				//	Calculate standard deviation
+				xdevcurrent, err := stats.StandardDeviation(xaxis)
+				if err != nil {
+					log.Fatal(err)
+				}
+				xdev = append(xdev, xdevcurrent)
+
+				ydevcurrent, err := stats.StandardDeviation(yaxis)
+				if err != nil {
+					log.Fatal(err)
+				}
+				ydev = append(ydev, ydevcurrent)
+
+				zdevcurrent, err := stats.StandardDeviation(zaxis)
+				if err != nil {
+					log.Fatal(err)
+				}
+				zdev = append(zdev, zdevcurrent)
+
+				//	Keep a rolling collection of data...
+				//	If we already have maxPoints items
+				//	remove the first item:
+				if len(xaxis) > maxPoints {
+					xaxis = xaxis[1:]
+				}
+
+				if len(yaxis) > maxPoints {
+					yaxis = yaxis[1:]
+				}
+
+				if len(zaxis) > maxPoints {
+					zaxis = zaxis[1:]
+				}
+
+				if len(zdev) > maxPoints {
+					xdev = xdev[1:]
+				}
+
+				if len(ydev) > maxPoints {
+					ydev = ydev[1:]
+				}
+
+				if len(zdev) > maxPoints {
+					zdev = zdev[1:]
+				}
+
+				// Create a point and add to batch
+				tags := map[string]string{"host": hostname}
+				fields := map[string]interface{}{
+					"x":    x,
+					"y":    y,
+					"z":    z,
+					"xdev": xdevcurrent,
+					"ydev": ydevcurrent,
+					"zdev": zdevcurrent}
+
+				pt, err := client.NewPoint("envirophat-lsm303d", tags, fields, time.Now())
+				if err != nil {
+					log.Fatal(err)
+				}
+				bp.AddPoint(pt)
+
+				//	influxserver should be a url, like
+				//	http://chile.lan:8086
+				influxURL, err := configDB.Get("influxserver")
+				if err == nil && influxURL.Value != "" {
+					c, err := client.NewHTTPClient(client.HTTPConfig{Addr: influxURL.Value})
 					if err != nil {
-						log.Fatal(err)
+						log.Printf("[WARN] Problem creating InfluxDB client: %v", err)
 					}
-
-					//	Get accelerometer values from the sensor
-					x, y, z, err := sensor.Accelerometer()
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					//	Track the measurements
-					xaxis = append(xaxis, x)
-					yaxis = append(yaxis, y)
-					zaxis = append(zaxis, z)
-
-					//	Calculate standard deviation
-					xdevcurrent, err := stats.StandardDeviation(xaxis)
-					if err != nil {
-						log.Fatal(err)
-					}
-					xdev = append(xdev, xdevcurrent)
-
-					ydevcurrent, err := stats.StandardDeviation(yaxis)
-					if err != nil {
-						log.Fatal(err)
-					}
-					ydev = append(ydev, ydevcurrent)
-
-					zdevcurrent, err := stats.StandardDeviation(zaxis)
-					if err != nil {
-						log.Fatal(err)
-					}
-					zdev = append(zdev, zdevcurrent)
-
-					//	Keep a rolling collection of data...
-					//	If we already have maxPoints items
-					//	remove the first item:
-					if len(xaxis) > maxPoints {
-						xaxis = xaxis[1:]
-					}
-
-					if len(yaxis) > maxPoints {
-						yaxis = yaxis[1:]
-					}
-
-					if len(zaxis) > maxPoints {
-						zaxis = zaxis[1:]
-					}
-
-					if len(zdev) > maxPoints {
-						xdev = xdev[1:]
-					}
-
-					if len(ydev) > maxPoints {
-						ydev = ydev[1:]
-					}
-
-					if len(zdev) > maxPoints {
-						zdev = zdev[1:]
-					}
-
-					// Create a point and add to batch
-					tags := map[string]string{"host": hostname}
-					fields := map[string]interface{}{
-						"x":    x,
-						"y":    y,
-						"z":    z,
-						"xdev": xdevcurrent,
-						"ydev": ydevcurrent,
-						"zdev": zdevcurrent}
-
-					pt, err := client.NewPoint("envirophat-lsm303d", tags, fields, time.Now())
-					if err != nil {
-						log.Fatal(err)
-					}
-					bp.AddPoint(pt)
 
 					// Write the batch
 					if err := c.Write(bp); err != nil {
-						log.Fatal(err)
+						log.Printf("[WARN] Problem writing to InfluxDB server: %v", err)
 					}
+				}
 
-					//	Calculate ... are we currently running?
-					if ((xdevcurrent * 1000) > applianceRunThreshold) && ((ydevcurrent * 1000) > applianceRunThreshold) && ((zdevcurrent * 1000) > applianceRunThreshold) && currentlyRunning == false {
-						log.Println("Looks like the machine is running")
-						currentlyRunning = true
-						timeStart = time.Now()
-					}
+				//	Calculate ... are we currently running?
+				if ((xdevcurrent * 1000) > applianceRunThreshold) && ((ydevcurrent * 1000) > applianceRunThreshold) && ((zdevcurrent * 1000) > applianceRunThreshold) && currentlyRunning == false {
+					log.Println("[DEBUG] Looks like the machine is running")
 
-					if ((xdevcurrent * 1000) < applianceRunThreshold) && ((ydevcurrent * 1000) < applianceRunThreshold) && ((zdevcurrent * 1000) < applianceRunThreshold) && currentlyRunning == true {
-						log.Println("Looks like the machine is stopped")
-						currentlyRunning = false
+					currentlyRunning = true
+					timeStart = time.Now()
 
-						//	Calculate the run time:
-						runningTime := time.Since(timeStart)
+					//	Track the activity:
+					activityDB.Add(data.Activity{Type: data.ApplianceRunning})
+				}
 
-						// Send the message to the recipient
+				if ((xdevcurrent * 1000) < applianceRunThreshold) && ((ydevcurrent * 1000) < applianceRunThreshold) && ((zdevcurrent * 1000) < applianceRunThreshold) && currentlyRunning == true {
+					log.Println("[DEBUG] Looks like the machine is stopped")
+					currentlyRunning = false
+
+					//	Calculate the run time:
+					runningTime := time.Since(timeStart)
+
+					//	Track the activity:
+					activityDB.Add(data.Activity{Type: data.ApplianceStopped})
+
+					// Send a Pushover message
+					pushAPIkey, err := configDB.Get("pushoverapikey")
+					pushTo, err := configDB.Get("pushoverrecipient")
+					if err == nil && pushTo.Value != "" {
+						pushClient := pushover.New(pushAPIkey.Value)
+						recipient := pushover.NewRecipient(pushTo.Value)
 						message := pushover.NewMessage(fmt.Sprintf("The dryer has finished running.  It ran for about %v minutes", int(runningTime.Minutes())))
 						message.Sound = "bike"
 						_, err := pushClient.SendMessage(message, recipient)
 						if err != nil {
-							log.Printf("Error sending pushover message: %v\n", err)
+							log.Printf("[WARN] Problem sending pushover message: %v\n", err)
 						}
 					}
-
-					pin.Write(embd.Low)
-
 				}
+
+				pin.Write(embd.Low)
+
 			}
-		}()
-	*/
+		}
+	}()
 
 	//	If we don't have a UI directory specified...
 	/*

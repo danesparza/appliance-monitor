@@ -16,8 +16,8 @@ type ActivityRequest struct {
 	EndTime   string `json:"endtime"`
 }
 
-// GetActivity gets activity for the appliance for a given time range
-func GetActivity(rw http.ResponseWriter, req *http.Request) {
+// GetActivityInRange gets activity for the appliance for a given time range
+func GetActivityInRange(rw http.ResponseWriter, req *http.Request) {
 	//	req.Body is a ReadCloser -- we need to remember to close it:
 	defer req.Body.Close()
 
@@ -25,23 +25,21 @@ func GetActivity(rw http.ResponseWriter, req *http.Request) {
 	starttime := time.Now().Add(-24 * time.Hour)
 	endtime := time.Now()
 
-	//	Decode the request if it was a POST:
-	if req.Method == "POST" {
-		request := ActivityRequest{}
-		err := json.NewDecoder(req.Body).Decode(&request)
-		if err != nil {
-			sendErrorResponse(rw, err, http.StatusBadRequest)
-			return
-		}
+	//	Decode the POST body:
+	request := ActivityRequest{}
+	err := json.NewDecoder(req.Body).Decode(&request)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusBadRequest)
+		return
+	}
 
-		//	Parse the dates from many different formats: https://github.com/araddon/dateparse
-		if t, err := dateparse.ParseAny(request.StartTime); err == nil {
-			starttime = t
-		}
+	//	Parse the dates from many different formats: https://github.com/araddon/dateparse
+	if t, err := dateparse.ParseAny(request.StartTime); err == nil {
+		starttime = t
+	}
 
-		if t, err := dateparse.ParseAny(request.EndTime); err == nil {
-			endtime = t
-		}
+	if t, err := dateparse.ParseAny(request.EndTime); err == nil {
+		endtime = t
 	}
 
 	//	Get the activity datastore:
@@ -50,6 +48,24 @@ func GetActivity(rw http.ResponseWriter, req *http.Request) {
 
 	//	Send the request to the datastore and get a response:
 	response, err := activityDB.GetRange(starttime, endtime)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusInternalServerError)
+		return
+	}
+
+	//	Serialize to JSON & return the response:
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(rw).Encode(response)
+}
+
+// GetAllActivity gets activity for the appliance for a given time range
+func GetAllActivity(rw http.ResponseWriter, req *http.Request) {
+	//	Get the activity datastore:
+	activityDB := data.ActivityDB{
+		Database: viper.GetString("datastore.activity")}
+
+	//	Send the request to the datastore and get a response:
+	response, err := activityDB.GetAllActivity()
 	if err != nil {
 		sendErrorResponse(rw, err, http.StatusInternalServerError)
 		return

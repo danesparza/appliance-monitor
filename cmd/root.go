@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/hashicorp/logutils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -37,6 +39,13 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	filter := &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
+		MinLevel: logutils.LogLevel("DEBUG"),
+		Writer:   os.Stderr,
+	}
+	log.SetOutput(filter)
 
 	// Cobra supports Persistent Flags, which, if defined here,
 	// will be global for your application.
