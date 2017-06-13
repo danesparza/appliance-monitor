@@ -1,5 +1,10 @@
 server:
   port: 3030
+  allowed-origins: "*"
 datastore:
   activity: /var/lib/appliance-monitor/activity.db
   config: /var/lib/appliance-monitor/config.db
+settings:
+  name: "appliance-monitor"
+  monitorwindow: 120
+  pushoverapikey: "ad2ujxv7zi7i5zw8fuvt5hu3chjuv4"
