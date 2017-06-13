@@ -103,10 +103,7 @@ func serve(cmd *cobra.Command, args []string) {
 	//	Start the collection ticker
 	go func() {
 		log.Println("[INFO] Initializing GPIO...")
-		err := embd.InitGPIO()
-		if err != nil {
-			log.Fatal("[ERROR] Initializing GPIO:", err)
-		}
+		embd.InitGPIO()
 		defer embd.CloseGPIO()
 
 		pin, err := embd.NewDigitalPin("GPIO_4")
