@@ -28,7 +28,7 @@ dependencies:
     # Go configuration on CircleCI is wonky.  Make sure our code
     # is in the correct Go workspace structure    
     - rsync -azC --delete ./ --include=".git" "$PROJECT_DIR"
-    - go get -u -a -t -d -v $PACKAGE_PATH/...
+    - go get -t -d -v $PACKAGE_PATH/...
   cache_directories:
     - ~/download
 test:
