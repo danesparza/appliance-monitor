@@ -13,18 +13,16 @@ import (
 
 	/*
 		Raspberry pi specific imports:
-		"github.com/danesparza/appliance-monitor/api"
-		"github.com/kidoman/embd"
-		_ "github.com/kidoman/embd/host/rpi" // This loads the RPi driver
 	*/
+	"github.com/danesparza/embd/sensor/envirophat"
+	"github.com/kidoman/embd"
+	_ "github.com/kidoman/embd/host/rpi" // This loads the RPi driver
 
 	"github.com/danesparza/appliance-monitor/api"
 	"github.com/danesparza/appliance-monitor/data"
-	"github.com/danesparza/embd/sensor/envirophat"
 	"github.com/gorilla/mux"
 	"github.com/gregdel/pushover"
 	client "github.com/influxdata/influxdb/client/v2"
-	"github.com/kidoman/embd"
 	"github.com/montanaflynn/stats"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
@@ -103,7 +101,10 @@ func serve(cmd *cobra.Command, args []string) {
 	//	Start the collection ticker
 	go func() {
 		log.Println("[INFO] Initializing GPIO...")
-		embd.InitGPIO()
+		err := embd.InitGPIO()
+		if err != nil {
+			log.Fatal("[ERROR] Initializing GPIO:", err)
+		}
 		defer embd.CloseGPIO()
 
 		pin, err := embd.NewDigitalPin("GPIO_4")
