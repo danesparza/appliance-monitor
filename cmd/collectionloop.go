@@ -1,3 +1,5 @@
+// +build !linux !arm
+
 package cmd
 
 import (
@@ -10,7 +12,7 @@ import (
 )
 
 func collectionloop(ctx context.Context) {
-	log.Println("[INFO] Running on Windows, so this will be boring...")
+	log.Println("[INFO] Running on a platform other than Linux/ARM, so this will be boring...")
 
 	//	Connect to the datastores:
 	log.Printf("[INFO] Config database: %s\n", viper.GetString("datastore.config"))
