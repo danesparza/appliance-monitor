@@ -9,7 +9,7 @@ import (
 
 	"github.com/danesparza/appliance-monitor/data"
 	"github.com/gregdel/pushover"
-	client "github.com/influxdata/influxdb/client/v2"
+	influxdb "github.com/influxdb/influxdb/client/v2"
 	"github.com/montanaflynn/stats"
 	"github.com/spf13/viper"
 
@@ -62,6 +62,7 @@ func collectionloop(ctx context.Context) {
 	if err == nil && influxURL.Value != "" {
 		log.Printf("[INFO] Using influxserver %v...", influxURL.Value)
 	}
+	c, _ := influxdb.NewHTTPClient(influxdb.HTTPConfig{Addr: influxURL.Value})
 
 	//	Keep track of the axis values
 	var xaxis, yaxis, zaxis []float64
@@ -79,15 +80,6 @@ func collectionloop(ctx context.Context) {
 		case <-time.After(1 * time.Second):
 			//	Perform sensor data gathering
 			pin.Write(embd.High)
-
-			// Create a new point batch
-			bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-				Database:  "sensors",
-				Precision: "s",
-			})
-			if err != nil {
-				log.Fatal(err)
-			}
 
 			//	Get accelerometer values from the sensor
 			x, y, z, err := sensor.Accelerometer()
@@ -146,27 +138,31 @@ func collectionloop(ctx context.Context) {
 				zdev = zdev[1:]
 			}
 
-			// Create a point and add to batch
-			tags := map[string]string{"host": hostname}
-			fields := map[string]interface{}{
-				"x":    x,
-				"y":    y,
-				"z":    z,
-				"xdev": xdevcurrent,
-				"ydev": ydevcurrent,
-				"zdev": zdevcurrent}
-
-			pt, err := client.NewPoint("envirophat-lsm303d", tags, fields, time.Now())
-			if err != nil {
-				log.Fatal(err)
-			}
-			bp.AddPoint(pt)
-
 			if influxURL.Value != "" {
-				c, err := client.NewHTTPClient(client.HTTPConfig{Addr: influxURL.Value})
+				// Create a new point batch
+				bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
+					Database:  "sensors",
+					Precision: "s",
+				})
 				if err != nil {
-					log.Printf("[WARN] Problem creating InfluxDB client: %v", err)
+					log.Fatal(err)
 				}
+
+				// Create a point and add to batch
+				tags := map[string]string{"host": hostname}
+				fields := map[string]interface{}{
+					"x":    x,
+					"y":    y,
+					"z":    z,
+					"xdev": xdevcurrent,
+					"ydev": ydevcurrent,
+					"zdev": zdevcurrent}
+
+				pt, err := influxdb.NewPoint("envirophat-lsm303d", tags, fields, time.Now())
+				if err != nil {
+					log.Fatal(err)
+				}
+				bp.AddPoint(pt)
 
 				// Write the batch
 				if err := c.Write(bp); err != nil {
