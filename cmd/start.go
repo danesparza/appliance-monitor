@@ -37,10 +37,10 @@ var startCmd = &cobra.Command{
 	Long: `Appliance monitor provides its own webserver which can serve both the 
 API and the UI for the app in addition to monitoring the system sensors
 and providing notification.`,
-	Run: serve,
+	Run: start,
 }
 
-func serve(cmd *cobra.Command, args []string) {
+func start(cmd *cobra.Command, args []string) {
 
 	//	If we have a config file, report it:
 	if viper.ConfigFileUsed() != "" {
@@ -82,6 +82,9 @@ func serve(cmd *cobra.Command, args []string) {
 
 	//	Start the collection ticker
 	go collectionloop(ctx)
+
+	//	Start the zeroconf server
+	go zeroconfserver(ctx)
 
 	//	If we don't have a UI directory specified...
 	/*
