@@ -27,6 +27,7 @@ func collectionloop(ctx context.Context) {
 	activityDB := data.ActivityDB{
 		Database: viper.GetString("datastore.activity")}
 
+	//	Initialize GPIO / I2C / etc
 	log.Println("[INFO] Initializing GPIO...")
 	err := embd.InitGPIO()
 	if err != nil {
@@ -78,9 +79,12 @@ func collectionloop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(1 * time.Second):
-			//	Perform sensor data gathering
+			//	Turn the LED on
 			pin.Write(embd.High)
 
+			/**************************
+				SENSOR DATA GATHERING
+			***************************/
 			//	Get accelerometer values from the sensor
 			x, y, z, err := sensor.Accelerometer()
 			if err != nil {
@@ -138,6 +142,9 @@ func collectionloop(ctx context.Context) {
 				zdev = zdev[1:]
 			}
 
+			/***************************
+				INFLUXDB DEBUGGING
+			****************************/
 			if influxURL.Value != "" {
 				// Create a new point batch
 				bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
@@ -170,7 +177,9 @@ func collectionloop(ctx context.Context) {
 				}
 			}
 
-			//	Calculate ... are we currently running?
+			/*********************************
+				EVENT: MACHINE STARTED
+			**********************************/
 			if ((xdevcurrent * 1000) > applianceRunThreshold) && ((ydevcurrent * 1000) > applianceRunThreshold) && ((zdevcurrent * 1000) > applianceRunThreshold) && currentlyRunning == false {
 				log.Println("[DEBUG] Looks like the machine is running")
 
@@ -181,6 +190,9 @@ func collectionloop(ctx context.Context) {
 				activityDB.Add(data.Activity{Type: data.ApplianceRunning})
 			}
 
+			/*********************************
+				EVENT: MACHINE STOPPED
+			**********************************/
 			if ((xdevcurrent * 1000) < applianceRunThreshold) && ((ydevcurrent * 1000) < applianceRunThreshold) && ((zdevcurrent * 1000) < applianceRunThreshold) && currentlyRunning == true {
 				log.Println("[DEBUG] Looks like the machine is stopped")
 				currentlyRunning = false
@@ -206,8 +218,8 @@ func collectionloop(ctx context.Context) {
 				}
 			}
 
+			//	Turn the LED off
 			pin.Write(embd.Low)
-
 		}
 	}
 }

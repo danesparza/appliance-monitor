@@ -9,10 +9,6 @@ import (
 	"strings"
 	"syscall"
 
-	/*
-		Raspberry pi specific imports:
-	*/
-
 	"github.com/danesparza/appliance-monitor/api"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
