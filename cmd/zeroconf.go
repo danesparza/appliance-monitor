@@ -4,8 +4,11 @@ import (
 	"context"
 	"log"
 
+	"fmt"
+
 	"github.com/danesparza/appliance-monitor/data"
 	"github.com/grandcat/zeroconf"
+	"github.com/rs/xid"
 	"github.com/spf13/viper"
 )
 
@@ -23,8 +26,14 @@ func zeroconfserver(ctx context.Context) {
 		return
 	}
 
+	//	Get our machine id:
+	guid := xid.New()
+	machineID := guid.Machine()
+
 	//	Create the zeroconf server
-	server, err := zeroconf.Register(appName.Value, "appliance.monitor", "local.", 3030, []string{"txtv=0", "lo=1", "la=2"}, nil)
+	server, err := zeroconf.Register(appName.Value, "_appliance-monitor._tcp", "local.", 3030, []string{
+		"txtv=1", fmt.Sprintf("id=%x", machineID)}, nil)
+
 	if err != nil {
 		log.Printf("[ERROR] Problem starting zeroconf server: %v", err)
 		return
