@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/danesparza/appliance-monitor/api"
@@ -44,7 +43,7 @@ func start(cmd *cobra.Command, args []string) {
 	}
 
 	//	Create a router and setup our REST endpoints...
-	var Router = mux.NewRouter()
+	Router := mux.NewRouter()
 
 	//	Setup our routes
 	// Router.HandleFunc("/", api.ShowUI)
@@ -104,11 +103,7 @@ func start(cmd *cobra.Command, args []string) {
 
 	//	Setup the CORS options:
 	log.Printf("[INFO] Allowed CORS origins: %s\n", viper.GetString("server.allowed-origins"))
-	c := cors.New(cors.Options{
-		AllowedOrigins:   strings.Split(allowedOrigins, ","),
-		AllowCredentials: true,
-	})
-	corsHandler := c.Handler(Router)
+	corsHandler := cors.Default().Handler(Router)
 
 	//	Format the bound interface:
 	formattedInterface := viper.GetString("server.bind")
