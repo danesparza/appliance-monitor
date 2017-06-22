@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/danesparza/appliance-monitor/api"
@@ -19,7 +20,6 @@ var (
 	serverInterface   string
 	serverPort        int
 	serverUIDirectory string
-	allowedOrigins    string
 
 	maxPoints             = 120
 	applianceRunThreshold = float64(8)
@@ -103,7 +103,11 @@ func start(cmd *cobra.Command, args []string) {
 
 	//	Setup the CORS options:
 	log.Printf("[INFO] Allowed CORS origins: %s\n", viper.GetString("server.allowed-origins"))
-	corsHandler := cors.Default().Handler(Router)
+
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   strings.Split(viper.GetString("server.allowed-origins"), ","),
+		AllowCredentials: true,
+	}).Handler(Router)
 
 	//	Format the bound interface:
 	formattedInterface := viper.GetString("server.bind")
@@ -131,13 +135,11 @@ func init() {
 	startCmd.Flags().IntVarP(&serverPort, "port", "p", 1313, "port on which the server will listen")
 	startCmd.Flags().StringVarP(&serverInterface, "bind", "i", "", "interface to which the server will bind")
 	startCmd.Flags().StringVarP(&serverUIDirectory, "ui-dir", "u", "", "directory for the UI")
-	startCmd.Flags().StringVarP(&allowedOrigins, "allowed-origins", "o", "", "comma seperated list of allowed CORS origins")
 
 	//	Bind config flags for optional config file override:
 	viper.BindPFlag("server.port", startCmd.Flags().Lookup("port"))
 	viper.BindPFlag("server.bind", startCmd.Flags().Lookup("bind"))
 	viper.BindPFlag("server.ui-dir", startCmd.Flags().Lookup("ui-dir"))
-	viper.BindPFlag("server.allowed-origins", startCmd.Flags().Lookup("allowed-origins"))
 
 	//	Set the build version information:
 	api.BuildVersion = BuildVersion
