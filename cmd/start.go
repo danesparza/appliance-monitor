@@ -22,12 +22,6 @@ var (
 	serverInterface   string
 	serverPort        int
 	serverUIDirectory string
-
-	maxPoints             = 120
-	applianceRunThreshold = float64(8)
-
-	// WsHub is the websocket hub for activity tracking
-	// WsHub = NewHub()
 )
 
 // startCmd represents the start command
