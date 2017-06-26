@@ -10,6 +10,8 @@ import (
 	"syscall"
 
 	"github.com/danesparza/appliance-monitor/api"
+	"github.com/danesparza/appliance-monitor/sensordata"
+	"github.com/danesparza/appliance-monitor/zeroconf"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
@@ -23,6 +25,9 @@ var (
 
 	maxPoints             = 120
 	applianceRunThreshold = float64(8)
+
+	// WsHub is the websocket hub for activity tracking
+	// WsHub = NewHub()
 )
 
 // startCmd represents the start command
@@ -67,7 +72,7 @@ func start(cmd *cobra.Command, args []string) {
 	Router.HandleFunc("/reset/config", nil)
 
 	//	Websocket connections
-	// Router.Handle("/ws", api.WsHandler{H: api.WsHub})
+	Router.Handle("/ws", api.WsHandler{H: sensordata.WsHub})
 
 	//	Trap program exit appropriately
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,11 +80,11 @@ func start(cmd *cobra.Command, args []string) {
 	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
 	go handleSignals(ctx, sigch, cancel)
 
-	//	Start the collection ticker
-	go collectionloop(ctx)
+	//	Start the collection process
+	go sensordata.CollectAndProcess(ctx)
 
 	//	Start the zeroconf server
-	go zeroconfserver(ctx)
+	go zeroconf.Serve(ctx)
 
 	//	If we don't have a UI directory specified...
 	/*

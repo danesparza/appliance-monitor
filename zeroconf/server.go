@@ -1,4 +1,4 @@
-package cmd
+package zeroconf
 
 import (
 	"context"
@@ -12,7 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func zeroconfserver(ctx context.Context) {
+// Serve starts the zeroconf service and registers this server
+func Serve(ctx context.Context) {
 	log.Println("[INFO] Starting the zeroconf service...")
 
 	//	Get a reference to the config database

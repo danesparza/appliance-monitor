@@ -1,4 +1,4 @@
-package cmd
+package sensordata
 
 import (
 	"context"
@@ -18,7 +18,8 @@ import (
 	_ "github.com/kidoman/embd/host/rpi" // This loads the RPi driver
 )
 
-func collectionloop(ctx context.Context) {
+// CollectAndProcess performs the sensor data collection and data processing
+func CollectAndProcess(ctx context.Context) {
 	//	Connect to the datastores:
 	log.Printf("[INFO] Config database: %s\n", viper.GetString("datastore.config"))
 	configDB := data.ConfigDB{
@@ -182,6 +183,7 @@ func collectionloop(ctx context.Context) {
 			**********************************/
 			if ((xdevcurrent * 1000) > applianceRunThreshold) && ((ydevcurrent * 1000) > applianceRunThreshold) && ((zdevcurrent * 1000) > applianceRunThreshold) && currentlyRunning == false {
 				log.Println("[DEBUG] Looks like the machine is running")
+				WsHub.Broadcast <- []byte("Appliance state: running")
 
 				currentlyRunning = true
 				timeStart = time.Now()
@@ -195,6 +197,8 @@ func collectionloop(ctx context.Context) {
 			**********************************/
 			if ((xdevcurrent * 1000) < applianceRunThreshold) && ((ydevcurrent * 1000) < applianceRunThreshold) && ((zdevcurrent * 1000) < applianceRunThreshold) && currentlyRunning == true {
 				log.Println("[DEBUG] Looks like the machine is stopped")
+				WsHub.Broadcast <- []byte("Appliance state: stopped")
+
 				currentlyRunning = false
 
 				//	Calculate the run time:
