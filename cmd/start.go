@@ -45,7 +45,7 @@ func start(cmd *cobra.Command, args []string) {
 	Router := mux.NewRouter()
 
 	//	Setup our routes
-	// Router.HandleFunc("/", api.ShowUI)
+	Router.HandleFunc("/", api.ShowUI)
 
 	//	Activities
 	Router.HandleFunc("/activity", api.GetAllActivity).Methods("GET")
@@ -81,24 +81,22 @@ func start(cmd *cobra.Command, args []string) {
 	go zeroconf.Serve(ctx)
 
 	//	If we don't have a UI directory specified...
-	/*
-		if viper.GetString("server.ui-dir") == "" {
-			//	Use the static assets file generated with
-			//	https://github.com/elazarl/go-bindata-assetfs using the application-monitor-ui from
-			//	https://github.com/danesparza/application-monitor-ui.
-			//
-			//	To generate this file, place the 'ui'
-			//	directory under the main application-monitor directory and run the commands:
-			//	go-bindata-assetfs.exe -pkg cmd ./ui/...
-			//	mv bindata_assetfs.go cmd
-			//	go install ./...
-			Router.PathPrefix("/ui").Handler(http.StripPrefix("/ui", http.FileServer(assetFS())))
-		} else {
-			//	Use the supplied directory:
-			log.Printf("[INFO] Using UI directory: %s\n", viper.GetString("server.ui-dir"))
-			Router.PathPrefix("/ui").Handler(http.StripPrefix("/ui", http.FileServer(http.Dir(viper.GetString("server.ui-dir")))))
-		}
-	*/
+	if viper.GetString("server.ui-dir") == "" {
+		//	Use the static assets file generated with
+		//	https://github.com/elazarl/go-bindata-assetfs using the application-monitor-ui from
+		//	https://github.com/danesparza/application-monitor-ui.
+		//
+		//	To generate this file, place the 'ui'
+		//	directory under the main application-monitor-ui directory and run the commands:
+		//	go-bindata-assetfs -pkg cmd build/...
+		//	Move bindata_assetfs.go to the application-monitor cmd directory
+		//	go install ./...
+		Router.PathPrefix("/ui").Handler(http.StripPrefix("/ui", http.FileServer(assetFS())))
+	} else {
+		//	Use the supplied directory:
+		log.Printf("[INFO] Using UI directory: %s\n", viper.GetString("server.ui-dir"))
+		Router.PathPrefix("/ui").Handler(http.StripPrefix("/ui", http.FileServer(http.Dir(viper.GetString("server.ui-dir")))))
+	}
 
 	//	Setup the CORS options:
 	log.Printf("[INFO] Allowed CORS origins: %s\n", viper.GetString("server.allowed-origins"))
