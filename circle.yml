@@ -11,6 +11,11 @@ machine:
     - test -e download/$GODIST || curl -o download/$GODIST https://storage.googleapis.com/golang/$GODIST
     - sudo rm -rf /usr/local/go
     - sudo tar -C /usr/local -xzf download/$GODIST
+checkout:
+  post:
+    # Get our UI source
+    - cd /tmp
+    - git clone https://github.com/$CIRCLE_PROJECT_USERNAME/appliance-monitor-ui.git
 dependencies:
   pre:    
     # Sanity check that our go version is installed
@@ -18,10 +23,15 @@ dependencies:
     # Compiler and release tools
     - go get github.com/mitchellh/gox
     - go get github.com/tcnksm/ghr
+    # Static assets compilers
+    - go get github.com/jteeuwen/go-bindata/...
+    - go get github.com/elazarl/go-bindata-assetfs/...
     # Utilities
     - go get github.com/danesparza/tokenreplace
     # Unit test reports
     - go get -u github.com/jstemmer/go-junit-report
+    # Sanity check the yarn version:
+    - yarn --version
   override:
     # Create our project workspace
     - mkdir -p "$PROJECT_DIR"
@@ -29,6 +39,15 @@ dependencies:
     # is in the correct Go workspace structure    
     - rsync -azC --delete ./ --include=".git" "$PROJECT_DIR"
     - go get -t -d -v $PACKAGE_PATH/...
+  post: 
+    # Setup our UI     
+    - mkdir -p /tmp/ui    
+    - cd /tmp/appliance-monitor-ui; git describe --tags; yarn; yarn build; cp -r /tmp/appliance-monitor-ui/build/*.* /tmp/ui;
+    - ls -l /tmp/ui
+    # - cp -r /tmp/ui $PROJECT_DIR
+    # - ls -l $PROJECT_DIR
+    # Compile the UI static assets into a Go sourcefile (to be compiled)
+    # - cd $PROJECT_DIR; go-bindata-assetfs -pkg cmd ./ui/...;rm cmd/bindata_assetfs.go; ls -l cmd; mv bindata_assetfs.go cmd; ls -l cmd; cat cmd/bindata_assetfs.go
   cache_directories:
     - ~/download
 test:
