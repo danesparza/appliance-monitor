@@ -46,7 +46,7 @@ dependencies:
     # Setup our UI     
     - mkdir -p /tmp/ui    
     - cd /tmp/appliance-monitor-ui; git describe --tags; yarn; yarn build; go-bindata-assetfs -pkg cmd build/...; mv -f bindata_assetfs.go "$PROJECT_DIR/cmd";
-    - ls -l $PROJECT_DIR
+    - ls -lR $PROJECT_DIR
     # Compile the UI static assets into a Go sourcefile (to be compiled)
     # - cd $PROJECT_DIR; go-bindata-assetfs -pkg cmd ./ui/...;rm cmd/bindata_assetfs.go; ls -l cmd; mv bindata_assetfs.go cmd; ls -l cmd; cat cmd/bindata_assetfs.go
   cache_directories:
