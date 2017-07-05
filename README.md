@@ -1,2 +1,2 @@
-# appliance-monitor [![CircleCI](https://circleci.com/gh/danesparza/appliance-monitor.svg?style=shield)](https://circleci.com/gh/danesparza/appliance-monitor) 
+# appliance-monitor [![CircleCI](https://circleci.com/gh/danesparza/appliance-monitor.svg?style=shield)](https://circleci.com/gh/danesparza/appliance-monitor) [![Go Report Card](https://goreportcard.com/badge/github.com/danesparza/appliance-monitor)](https://goreportcard.com/report/github.com/danesparza/appliance-monitor)
 IoT monitoring system for laundry machines, dishwashers and other non-connected appliances
