@@ -104,3 +104,42 @@ func SetConfigItem(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(rw).Encode(response)
 }
+
+// SetAllConfigItems adds or updates multiple config items and returns all config items in JSON format
+func SetAllConfigItems(rw http.ResponseWriter, req *http.Request) {
+	//	req.Body is a ReadCloser -- we need to remember to close it:
+	defer req.Body.Close()
+
+	//	Decode the request if it was a POST:
+	request := []data.ConfigItem{}
+	err := json.NewDecoder(req.Body).Decode(&request)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusBadRequest)
+		return
+	}
+
+	//	Get the config datastore:
+	configDB := data.ConfigDB{
+		Database: viper.GetString("datastore.config")}
+
+	//	Send each request to the datastore and get a response:
+	for c := 0; c < len(request); c++ {
+		//	Set the config item:
+		_, err := configDB.Set(request[c])
+		if err != nil {
+			sendErrorResponse(rw, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	//	Get the (updated) full list of config items:
+	response, err := configDB.GetAll()
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusInternalServerError)
+		return
+	}
+
+	//	Serialize to JSON & return the response:
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(rw).Encode(response)
+}

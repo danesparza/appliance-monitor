@@ -53,8 +53,9 @@ func start(cmd *cobra.Command, args []string) {
 
 	//	Config
 	Router.HandleFunc("/config", api.GetAllConfig).Methods("GET")
+	Router.HandleFunc("/config", api.SetAllConfigItems).Methods("POST")
 	Router.HandleFunc("/config/{name}", api.GetConfigItem).Methods("GET")
-	Router.HandleFunc("/config", api.SetConfigItem).Methods("POST")
+	Router.HandleFunc("/config/{name}", api.SetConfigItem).Methods("POST")
 	Router.HandleFunc("/config/{name}", api.RemoveConfigItem).Methods("DELETE")
 
 	//	System information
