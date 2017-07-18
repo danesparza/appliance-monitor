@@ -52,11 +52,12 @@ func start(cmd *cobra.Command, args []string) {
 	Router.HandleFunc("/activity", api.GetActivityInRange).Methods("POST")
 
 	//	Config
-	Router.HandleFunc("/config", api.GetAllConfig).Methods("GET")
-	Router.HandleFunc("/config", api.SetAllConfigItems).Methods("POST")
-	Router.HandleFunc("/config/{name}", api.GetConfigItem).Methods("GET")
-	Router.HandleFunc("/config/{name}", api.SetConfigItem).Methods("POST")
-	Router.HandleFunc("/config/{name}", api.RemoveConfigItem).Methods("DELETE")
+	configapi := &api.ConfigAPI{Updated: make(chan bool)}
+	Router.HandleFunc("/config", configapi.GetAllConfig).Methods("GET")
+	Router.HandleFunc("/config", configapi.SetAllConfigItems).Methods("POST")
+	Router.HandleFunc("/config/{name}", configapi.GetConfigItem).Methods("GET")
+	Router.HandleFunc("/config/{name}", configapi.SetConfigItem).Methods("POST")
+	Router.HandleFunc("/config/{name}", configapi.RemoveConfigItem).Methods("DELETE")
 
 	//	System information
 	Router.HandleFunc("/system/state", api.GetCurrentState).Methods("GET")
@@ -79,7 +80,7 @@ func start(cmd *cobra.Command, args []string) {
 	go sensordata.CollectAndProcess(ctx)
 
 	//	Start the zeroconf server
-	go zeroconf.Serve(ctx)
+	go zeroconf.Serve(ctx, configapi.Updated)
 
 	//	If we don't have a UI directory specified...
 	if viper.GetString("server.ui-dir") == "" {

@@ -11,8 +11,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ConfigAPI represents the configuration API routes
+type ConfigAPI struct {
+
+	// Updated signals when the configuration has been updated
+	Updated chan bool
+}
+
 // GetAllConfig gets all configuration and returns it in JSON format.
-func GetAllConfig(rw http.ResponseWriter, req *http.Request) {
+func (c *ConfigAPI) GetAllConfig(rw http.ResponseWriter, req *http.Request) {
 
 	//	Connect to the datastore:
 	configDB := data.ConfigDB{
@@ -32,7 +39,7 @@ func GetAllConfig(rw http.ResponseWriter, req *http.Request) {
 
 // GetConfigItem gets a single configuration and returns it in JSON format.
 // If the item can't be found, returns an empty config item
-func GetConfigItem(rw http.ResponseWriter, req *http.Request) {
+func (c *ConfigAPI) GetConfigItem(rw http.ResponseWriter, req *http.Request) {
 
 	//	Connect to the datastore:
 	configDB := data.ConfigDB{
@@ -55,7 +62,7 @@ func GetConfigItem(rw http.ResponseWriter, req *http.Request) {
 }
 
 // RemoveConfigItem removes a single config item
-func RemoveConfigItem(rw http.ResponseWriter, req *http.Request) {
+func (c *ConfigAPI) RemoveConfigItem(rw http.ResponseWriter, req *http.Request) {
 
 	//	Get the config datastore:
 	configDB := data.ConfigDB{
@@ -77,7 +84,7 @@ func RemoveConfigItem(rw http.ResponseWriter, req *http.Request) {
 }
 
 // SetConfigItem adds or updates a single config item and returns the new item in JSON format
-func SetConfigItem(rw http.ResponseWriter, req *http.Request) {
+func (c *ConfigAPI) SetConfigItem(rw http.ResponseWriter, req *http.Request) {
 	//	req.Body is a ReadCloser -- we need to remember to close it:
 	defer req.Body.Close()
 
@@ -100,13 +107,15 @@ func SetConfigItem(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	c.Updated <- true
+
 	//	Serialize to JSON & return the response:
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(rw).Encode(response)
 }
 
 // SetAllConfigItems adds or updates multiple config items and returns all config items in JSON format
-func SetAllConfigItems(rw http.ResponseWriter, req *http.Request) {
+func (c *ConfigAPI) SetAllConfigItems(rw http.ResponseWriter, req *http.Request) {
 	//	req.Body is a ReadCloser -- we need to remember to close it:
 	defer req.Body.Close()
 
