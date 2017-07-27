@@ -10,10 +10,12 @@ import (
 	"syscall"
 
 	"github.com/danesparza/appliance-monitor/api"
+	"github.com/danesparza/appliance-monitor/data"
 	"github.com/danesparza/appliance-monitor/sensordata"
 	"github.com/danesparza/appliance-monitor/zeroconf"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/rs/xid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,6 +42,32 @@ func start(cmd *cobra.Command, args []string) {
 	if viper.ConfigFileUsed() != "" {
 		log.Println("[INFO] Using config file:", viper.ConfigFileUsed())
 	}
+
+	//	Get a reference to the config database
+	configDB := data.ConfigDB{
+		Database: viper.GetString("datastore.config")}
+
+	//	Get the configured deviceId
+	deviceID, err := configDB.Get("deviceID")
+	if err != nil {
+		log.Printf("[ERROR] Problem getting deviceId: %v", err)
+		return
+	}
+
+	//	If we don't have a deviceId yet, configure one:
+	if deviceID.Value == "" {
+
+		//	Generate a deviceId:
+		guid := xid.New()
+		deviceID.Name = "deviceID"
+		deviceID.Value = guid.String()
+
+		//	Save it:
+		configDB.Set(deviceID)
+	}
+
+	//	Emit our deviceID:
+	log.Printf("[INFO] Using deviceID: %s\n", deviceID.Value)
 
 	//	Create a router and setup our REST endpoints...
 	Router := mux.NewRouter()

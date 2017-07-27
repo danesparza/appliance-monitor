@@ -27,13 +27,22 @@ func Serve(ctx context.Context, restart chan bool) {
 		return
 	}
 
+	//	Get the configured deviceId
+	deviceID, err := configDB.Get("deviceID")
+	if err != nil {
+		log.Printf("[ERROR] Problem getting deviceId: %v", err)
+		return
+	}
+
 	//	Get our machine id:
 	guid := xid.New()
 	machineID := guid.Machine()
 
 	//	Create the zeroconf server
 	server, err := zeroconf.Register(appName.Value, "_appliance-monitor._tcp", "local.", 3030, []string{
-		"txtv=1", fmt.Sprintf("id=%x", machineID)}, nil)
+		"txtv=1",
+		fmt.Sprintf("machineID=%x", machineID),
+		fmt.Sprintf("deviceID=%s", deviceID.Value)}, nil)
 
 	if err != nil {
 		log.Printf("[ERROR] Problem starting zeroconf server: %v", err)
@@ -60,7 +69,7 @@ func Serve(ctx context.Context, restart chan bool) {
 
 			//	Start a new server with the new name
 			server, err = zeroconf.Register(appName.Value, "_appliance-monitor._tcp", "local.", 3030, []string{
-				"txtv=1", fmt.Sprintf("id=%x", machineID)}, nil)
+				"txtv=1", fmt.Sprintf("machineid=%x", machineID)}, nil)
 
 			if err != nil {
 				log.Printf("[ERROR] Problem restarting zeroconf server: %v", err)
