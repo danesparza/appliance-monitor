@@ -208,18 +208,11 @@ func CollectAndProcess(ctx context.Context) {
 				activityDB.Add(data.Activity{Type: data.ApplianceStopped})
 
 				// Send a Pushover message
-				pushAPIkey, err := configDB.Get("pushoverapikey")
-				pushTo, err := configDB.Get("pushoverrecipient")
-				if err == nil && pushTo.Value != "" {
-					pushClient := pushover.New(pushAPIkey.Value)
-					recipient := pushover.NewRecipient(pushTo.Value)
-					message := pushover.NewMessage(fmt.Sprintf("The dryer has finished running.  It ran for about %v minutes", int(runningTime.Minutes())))
-					message.Sound = "bike"
-					_, err := pushClient.SendMessage(message, recipient)
-					if err != nil {
-						log.Printf("[WARN] Problem sending pushover message: %v\n", err)
-					}
+				err := sendPushoverNotification(configDB, int(runningTime.Minutes()))
+				if err != nil {
+					log.Printf("[WARN] Problem sending pushover message: %v\n", err)
 				}
+
 			}
 
 			//	Turn the LED off
@@ -228,9 +221,38 @@ func CollectAndProcess(ctx context.Context) {
 	}
 }
 
+// Resets the pin
 func resetPin(pin embd.DigitalPin) {
 	if err := pin.SetDirection(embd.In); err != nil {
 		log.Fatal("resetting pin:", err)
 	}
 	pin.Close()
+}
+
+// Track the activity
+func trackActivity(activity data.Activity) error {
+	//	Track the activity in the database
+
+	//	Track the activity in the cloud
+
+}
+
+// Send a pushover notification
+func sendPushoverNotification(c ConfigDB, runningTime int) error {
+
+	//	Get the config data
+	pushAPIkey, err := c.Get("pushoverapikey")
+	pushTo, err := c.Get("pushoverrecipient")
+
+	//	If we have config data set...
+	if err == nil && pushTo.Value != "" {
+		//	Create a new client and push a message
+		pushClient := pushover.New(pushAPIkey.Value)
+		recipient := pushover.NewRecipient(pushTo.Value)
+		message := pushover.NewMessage(fmt.Sprintf("The dryer has finished running.  It ran for about %v minutes", runningTime))
+		message.Sound = "bike"
+		_, err := pushClient.SendMessage(message, recipient)
+	}
+
+	return err
 }
