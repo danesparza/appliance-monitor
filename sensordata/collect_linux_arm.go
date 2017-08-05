@@ -192,7 +192,7 @@ func CollectAndProcess(ctx context.Context) {
 				timeStart = time.Now()
 
 				//	Track the activity:
-				newActivity := data.Activity{Type: data.ApplianceRunning}
+				newActivity := data.Activity{Type: data.ApplianceRunning, Timestamp: time.Now()}
 				activityDB.Add(newActivity)
 				trackActivity(newActivity, configDB)
 			}
@@ -210,7 +210,7 @@ func CollectAndProcess(ctx context.Context) {
 				runningTime := time.Since(timeStart)
 
 				//	Track the activity:
-				newActivity := data.Activity{Type: data.ApplianceStopped}
+				newActivity := data.Activity{Type: data.ApplianceStopped, Timestamp: time.Now()}
 				activityDB.Add(newActivity)
 				trackActivity(newActivity, configDB)
 
