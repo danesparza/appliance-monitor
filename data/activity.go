@@ -31,6 +31,13 @@ type Activity struct {
 	Type      EventType `json:"eventtype"`
 }
 
+// CloudActivity represents a single activity event in the cloud
+type CloudActivity struct {
+	Timestamp time.Time `json:"timestamp"`
+	Type      EventType `json:"eventtype"`
+	DeviceID  string    `json:"deviceId"`
+}
+
 // ActivityDB is the BoltDB database for activity information
 type ActivityDB struct {
 	Database string

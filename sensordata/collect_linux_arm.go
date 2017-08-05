@@ -1,9 +1,12 @@
 package sensordata
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -189,7 +192,9 @@ func CollectAndProcess(ctx context.Context) {
 				timeStart = time.Now()
 
 				//	Track the activity:
-				activityDB.Add(data.Activity{Type: data.ApplianceRunning})
+				newActivity := data.Activity{Type: data.ApplianceRunning}
+				activityDB.Add(newActivity)
+				trackActivity(newActivity, configDB)
 			}
 
 			/*********************************
@@ -205,7 +210,9 @@ func CollectAndProcess(ctx context.Context) {
 				runningTime := time.Since(timeStart)
 
 				//	Track the activity:
-				activityDB.Add(data.Activity{Type: data.ApplianceStopped})
+				newActivity := data.Activity{Type: data.ApplianceStopped}
+				activityDB.Add(newActivity)
+				trackActivity(newActivity, configDB)
 
 				// Send a Pushover message
 				err := sendPushoverNotification(configDB, int(runningTime.Minutes()))
@@ -229,13 +236,35 @@ func resetPin(pin embd.DigitalPin) {
 	pin.Close()
 }
 
-// Track the activity
-func trackActivity(activity data.Activity) error {
-	//	Track the activity in the database
+// Track the activity in the cloud
+func trackActivity(activity data.Activity, c data.ConfigDB) error {
+	url := "https://api.appliance-monitor.com/v1/activity"
 
-	//	Track the activity in the cloud
+	//	Get the deviceID:
+	deviceID, _ := c.Get("deviceID")
 
-	return nil
+	//	Serialize to JSON
+	cloudActivity := data.CloudActivity{
+		DeviceID:  deviceID.Value,
+		Timestamp: activity.Timestamp,
+		Type:      activity.Type}
+
+	jsonStr, err := json.Marshal(cloudActivity)
+	if err != nil {
+		log.Printf("[WARN] Problem marshalling cloud activity message: %v\n", err)
+	}
+
+	//	Create a request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+
+	//	Set our headers
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+	//	Execute the request
+	client := &http.Client{}
+	_, err = client.Do(req)
+
+	return err
 }
 
 // Send a pushover notification
