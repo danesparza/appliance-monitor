@@ -235,10 +235,11 @@ func trackActivity(activity data.Activity) error {
 
 	//	Track the activity in the cloud
 
+	return nil
 }
 
 // Send a pushover notification
-func sendPushoverNotification(c ConfigDB, runningTime int) error {
+func sendPushoverNotification(c data.ConfigDB, runningTime int) error {
 
 	//	Get the config data
 	pushAPIkey, err := c.Get("pushoverapikey")
@@ -252,6 +253,9 @@ func sendPushoverNotification(c ConfigDB, runningTime int) error {
 		message := pushover.NewMessage(fmt.Sprintf("The dryer has finished running.  It ran for about %v minutes", runningTime))
 		message.Sound = "bike"
 		_, err := pushClient.SendMessage(message, recipient)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
