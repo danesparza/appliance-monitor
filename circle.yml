@@ -35,6 +35,9 @@ dependencies:
     - go get -u github.com/jstemmer/go-junit-report
     # Sanity check the yarn version:
     - yarn --version
+    # Reset UI config
+    - rm /tmp/appliance-monitor-ui/src/config.js
+    - cp /tmp/appliance-monitor-ui/src/config.reset.js /tmp/appliance-monitor-ui/src/config.js
   override:
     # Create our project workspace
     - mkdir -p "$PROJECT_DIR"
