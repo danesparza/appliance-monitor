@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/danesparza/appliance-monitor/api"
 	"github.com/danesparza/appliance-monitor/data"
+	"github.com/danesparza/appliance-monitor/network"
 	"github.com/danesparza/appliance-monitor/sensordata"
 	"github.com/danesparza/appliance-monitor/zeroconf"
 	"github.com/gorilla/mux"
@@ -41,6 +43,16 @@ func start(cmd *cobra.Command, args []string) {
 	//	If we have a config file, report it:
 	if viper.ConfigFileUsed() != "" {
 		log.Println("[INFO] Using config file:", viper.ConfigFileUsed())
+	}
+
+	//	See if we need to reset the host name and reboot:
+	name, _ := os.Hostname()
+	if !strings.Contains(name, "appliancemonitor") {
+		guid := xid.New()
+		err := network.ResetHostname(fmt.Sprintf("%s-%x", "appliancemonitor", guid.Machine()))
+		if err != nil {
+			log.Printf("[ERROR] There was a problem resetting the host name: %v", err)
+		}
 	}
 
 	//	Get a reference to the config database
