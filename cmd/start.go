@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -47,12 +49,17 @@ func start(cmd *cobra.Command, args []string) {
 
 	//	See if we need to reset the host name and reboot:
 	name, _ := os.Hostname()
-	if !strings.Contains(name, "appliancemonitor") {
-		guid := xid.New()
-		err := network.ResetHostname(fmt.Sprintf("%s-%x", "appliancemonitor", guid.Machine()))
+	properhostname := fmt.Sprintf("%s-%s", "am", getMacAddr())
+
+	if name != properhostname {
+		err := network.ResetHostname(properhostname)
 		if err != nil {
 			log.Printf("[ERROR] There was a problem resetting the host name: %v", err)
+			return
 		}
+		log.Println("Rebooting...")
+		syscall.Sync()
+		syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 	}
 
 	//	Get a reference to the config database
@@ -200,4 +207,22 @@ func handleSignals(ctx context.Context, sigch <-chan os.Signal, cancel context.C
 		cancel()
 		os.Exit(0)
 	}
+}
+
+// getMacAddr gets the MAC hardware
+// address of the host machine
+func getMacAddr() (addr string) {
+	interfaces, err := net.Interfaces()
+
+	if err == nil {
+		for _, i := range interfaces {
+			if i.Flags&net.FlagUp != 0 && bytes.Compare(i.HardwareAddr, nil) != 0 {
+				// Don't use random as we have a real address
+				addr = strings.Replace(i.HardwareAddr.String(), ":", "", -1)
+				break
+			}
+		}
+	}
+
+	return
 }
