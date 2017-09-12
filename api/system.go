@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/danesparza/appliance-monitor/data"
+	"github.com/danesparza/appliance-monitor/network"
 	"github.com/spf13/viper"
 )
 
@@ -15,6 +16,17 @@ type CurrentState struct {
 	ApplicationVersion string    `json:"appversion"`
 	DeviceRunning      bool      `json:"devicerunning"`
 	DeviceID           string    `json:"deviceId"`
+}
+
+// WifiUpdateRequest describes the request to update the Wifi credentials
+type WifiUpdateRequest struct {
+	SSID       string `json:"ssid"`
+	Passphrase string `json:"passphrase"`
+}
+
+type WifiUpdateResponse struct {
+	Status      int    `json:"status"`
+	Description string `json:"description"`
 }
 
 // GetCurrentState gets the current running state of the application
@@ -41,4 +53,27 @@ func GetCurrentState(rw http.ResponseWriter, req *http.Request) {
 	//	Serialize to JSON & return the response:
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(rw).Encode(currentState)
+}
+
+// UpdateWifi updates the wifi credentials for the machine
+func UpdateWifi(rw http.ResponseWriter, req *http.Request) {
+
+	//	Decode the request if it was a POST:
+	request := WifiUpdateRequest{}
+	err := json.NewDecoder(req.Body).Decode(&request)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusBadRequest)
+		return
+	}
+
+	//	Send the request to the wifi helper:
+	response := WifiUpdateResponse{Status: 200, Description: "Successful"}
+	err = network.UpdateWifiCredentials(request.SSID, request.Passphrase)
+	if err != nil {
+		sendErrorResponse(rw, err, http.StatusInternalServerError)
+	}
+
+	//	Serialize to JSON & return the response:
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(rw).Encode(response)
 }

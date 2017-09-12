@@ -57,9 +57,6 @@ func start(cmd *cobra.Command, args []string) {
 			log.Printf("[ERROR] There was a problem resetting the host name: %v", err)
 			return
 		}
-		log.Println("Rebooting...")
-		syscall.Sync()
-		syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 	}
 
 	//	Get a reference to the config database
@@ -108,7 +105,7 @@ func start(cmd *cobra.Command, args []string) {
 
 	//	System information
 	Router.HandleFunc("/system/state", api.GetCurrentState).Methods("GET")
-	Router.HandleFunc("/system/wifi", nil)
+	Router.HandleFunc("/system/wifi", api.UpdateWifi).Methods("POST")
 
 	//	System resets
 	Router.HandleFunc("/reset/network", nil)

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"syscall"
 )
 
 // ResetHostname changes the hostname for the local machine
@@ -43,6 +44,10 @@ func ResetHostname(newname string) error {
 		log.Printf("[ERROR] Problem writing /etc/hosts: %v", err.Error())
 		return err
 	}
+
+	log.Println("Rebooting...")
+	syscall.Sync()
+	syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 
 	return nil
 }
