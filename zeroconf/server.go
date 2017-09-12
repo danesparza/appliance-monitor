@@ -8,7 +8,6 @@ import (
 
 	"github.com/danesparza/appliance-monitor/data"
 	"github.com/grandcat/zeroconf"
-	"github.com/rs/xid"
 	"github.com/spf13/viper"
 )
 
@@ -34,14 +33,9 @@ func Serve(ctx context.Context, restart chan bool) {
 		return
 	}
 
-	//	Get our machine id:
-	guid := xid.New()
-	machineID := guid.Machine()
-
 	//	Create the zeroconf server
 	server, err := zeroconf.Register(appName.Value, "_appliance-monitor._tcp", "local.", 3030, []string{
 		"txtv=1",
-		fmt.Sprintf("machineID=%x", machineID),
 		fmt.Sprintf("deviceID=%s", deviceID.Value)}, nil)
 
 	if err != nil {
@@ -69,7 +63,8 @@ func Serve(ctx context.Context, restart chan bool) {
 
 			//	Start a new server with the new name
 			server, err = zeroconf.Register(appName.Value, "_appliance-monitor._tcp", "local.", 3030, []string{
-				"txtv=1", fmt.Sprintf("machineid=%x", machineID)}, nil)
+				"txtv=1",
+				fmt.Sprintf("deviceID=%s", deviceID.Value)}, nil)
 
 			if err != nil {
 				log.Printf("[ERROR] Problem restarting zeroconf server: %v", err)
