@@ -44,7 +44,6 @@ func ResetHostname(newname string) error {
 		return err
 	}
 
-	log.Println("Rebooting...")
 	RebootMachine()
 
 	return nil
