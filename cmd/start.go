@@ -48,9 +48,15 @@ func start(cmd *cobra.Command, args []string) {
 		log.Println("[INFO] Using config file:", viper.ConfigFileUsed())
 	}
 
+	//	Trap program exit appropriately
+	ctx, cancel := context.WithCancel(context.Background())
+	sigch := make(chan os.Signal, 2)
+	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
+	go handleSignals(ctx, sigch, cancel)
+
 	//	Start the reboot helper
 	systemapi := &api.SystemAPI{Reboot: make(chan bool)}
-	go system.ListenForReboots(systemapi.Reboot)
+	go system.ListenForReboots(ctx, systemapi.Reboot)
 
 	//	See if we need to reset the host name and reboot:
 	name, _ := os.Hostname()
@@ -118,12 +124,6 @@ func start(cmd *cobra.Command, args []string) {
 
 	//	Websocket connections
 	Router.Handle("/ws", api.WsHandler{H: sensordata.WsHub})
-
-	//	Trap program exit appropriately
-	ctx, cancel := context.WithCancel(context.Background())
-	sigch := make(chan os.Signal, 2)
-	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
-	go handleSignals(ctx, sigch, cancel)
 
 	//	Start the collection process
 	go sensordata.CollectAndProcess(ctx)
