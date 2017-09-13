@@ -19,7 +19,7 @@ func UpdateWifiCredentials(ssid, password string) error {
 	}
 
 	//	Save the formatted config file
-	err = ioutil.WriteFile("/etc/wpa_supplicant/wpa_supplicant.conf", []byte(newhosts), 0600)
+	err = ioutil.WriteFile("/etc/wpa_supplicant/wpa_supplicant.conf", []byte(formattedConfig), 0600)
 	if err != nil {
 		log.Printf("[ERROR] Problem writing /etc/wpa_supplicant/wpa_supplicant.conf: %v", err.Error())
 		return err
