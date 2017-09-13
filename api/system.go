@@ -67,13 +67,17 @@ func UpdateWifi(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	//	Send the request to the wifi helper:
-	response := WifiUpdateResponse{Status: 200, Description: "Successful"}
+	response := WifiUpdateResponse{Status: 200, Description: "Successful.  Rebooting..."}
 	err = network.UpdateWifiCredentials(request.SSID, request.Passphrase)
 	if err != nil {
 		sendErrorResponse(rw, err, http.StatusInternalServerError)
+		return
 	}
 
 	//	Serialize to JSON & return the response:
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(rw).Encode(response)
+
+	//	Reboot the machine
+	go network.RebootMachine()
 }

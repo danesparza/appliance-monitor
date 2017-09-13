@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"syscall"
 )
 
 // ResetHostname changes the hostname for the local machine
@@ -46,8 +45,7 @@ func ResetHostname(newname string) error {
 	}
 
 	log.Println("Rebooting...")
-	syscall.Sync()
-	syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
+	RebootMachine()
 
 	return nil
 }
