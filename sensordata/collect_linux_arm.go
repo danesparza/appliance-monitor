@@ -273,6 +273,7 @@ func sendPushoverNotification(c data.ConfigDB, runningTime int) error {
 	//	Get the config data
 	pushAPIkey, err := c.Get("pushoverapikey")
 	pushTo, err := c.Get("pushoverrecipient")
+	applianceName, err := c.Get("name")
 
 	//	If we have config data set...
 	if err == nil && pushTo.Value != "" {
