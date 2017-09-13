@@ -280,7 +280,7 @@ func sendPushoverNotification(c data.ConfigDB, runningTime int) error {
 		//	Create a new client and push a message
 		pushClient := pushover.New(pushAPIkey.Value)
 		recipient := pushover.NewRecipient(pushTo.Value)
-		message := pushover.NewMessage(fmt.Sprintf("%v has finished running.  It ran for about %v minutes", applianceName, runningTime))
+		message := pushover.NewMessage(fmt.Sprintf("%s has finished running.  It ran for about %v minutes", applianceName.Value, runningTime))
 		message.Sound = "bike"
 		_, err := pushClient.SendMessage(message, recipient)
 		if err != nil {

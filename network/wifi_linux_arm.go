@@ -32,12 +32,13 @@ func UpdateWifiCredentials(ssid, password string) error {
 
 // RebootMachine calls sync and reboots the machine
 func RebootMachine() {
-	log.Println("[INFO] Rebooting...")
-	syscall.Sync()
+	go func() {
+		log.Println("[INFO] Rebooting...")
+		syscall.Sync()
+	}()
 
 	// Wait before exiting, in order to give our parent enough time to finish
-	countdownBeforeExit := time.NewTimer(time.Second * 3)
-	<-countdownBeforeExit.C
+	time.Sleep(3 * time.Second)
 
 	syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 }
