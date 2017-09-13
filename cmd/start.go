@@ -216,6 +216,7 @@ func getMacAddr() (addr string) {
 			if i.Flags&net.FlagUp != 0 && bytes.Compare(i.HardwareAddr, nil) != 0 {
 				// Don't use random as we have a real address
 				addr = strings.Replace(i.HardwareAddr.String(), ":", "", -1)
+				addr = addr[6:len(addr)]
 				break
 			}
 		}
