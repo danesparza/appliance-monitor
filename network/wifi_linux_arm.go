@@ -3,12 +3,10 @@ package network
 import (
 	"io/ioutil"
 	"log"
-	"syscall"
-	"time"
 )
 
 // UpdateWifiCredentials updates the ssid and password used
-func UpdateWifiCredentials(ssid, password string) error {
+func UpdateWifiCredentials(ssid, password string, reboot chan bool) error {
 	log.Printf("[INFO] Updating the wifi credentials.\nNew SSID: %v\nNew Password: %v\n", ssid, password)
 
 	//	Get the formatted config file
@@ -25,20 +23,8 @@ func UpdateWifiCredentials(ssid, password string) error {
 		return err
 	}
 
-	RebootMachine()
+	log.Println("[INFO] Requesting a reboot because of wifi changes")
+	reboot <- true
 
 	return nil
-}
-
-// RebootMachine calls sync and reboots the machine
-func RebootMachine() {
-	go func() {
-		log.Println("[INFO] Rebooting...")
-		syscall.Sync()
-	}()
-
-	// Wait before exiting, in order to give our parent enough time to finish
-	time.Sleep(3 * time.Second)
-
-	syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 }

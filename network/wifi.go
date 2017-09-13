@@ -2,24 +2,14 @@
 
 package network
 
-import (
-	"log"
-	"time"
-)
+import "log"
 
 // UpdateWifiCredentials changes the hostname for the local machine
-func UpdateWifiCredentials(ssid, password string) error {
-	return nil // fmt.Errorf("Not running on Linux/ARM, so wifi can't be changed")
-}
+func UpdateWifiCredentials(ssid, password string, reboot chan bool) error {
+	log.Printf("[INFO] Not running on Linux/ARM.  Updating the wifi credentials.\nNew SSID: %v\nNew Password: %v\n", ssid, password)
 
-// RebootMachine calls sync and reboots the machine
-func RebootMachine() {
-	go func() {
-		log.Println("[INFO] Rebooting...")
-	}()
+	log.Println("[INFO] Requesting a reboot because of wifi changes")
+	reboot <- true
 
-	// Wait before exiting, in order to give our parent enough time to finish
-	time.Sleep(3 * time.Second)
-
-	log.Println("[WARN] Not running on Linux/ARM, so not rebooting")
+	return nil
 }

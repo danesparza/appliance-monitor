@@ -8,7 +8,7 @@ import (
 )
 
 // ResetHostname changes the hostname for the local machine
-func ResetHostname(newname string) error {
+func ResetHostname(newname string, reboot chan bool) error {
 	//	Get hostname:
 	currentname, err := os.Hostname()
 	if err != nil {
@@ -44,7 +44,9 @@ func ResetHostname(newname string) error {
 		return err
 	}
 
-	RebootMachine()
+	//	Indicate we should trigger a reboot
+	log.Println("[INFO] Requesting a reboot because of hostname changes")
+	reboot <- true
 
 	return nil
 }

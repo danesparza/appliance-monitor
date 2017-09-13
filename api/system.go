@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+// SystemAPI represents the system API routes
+type SystemAPI struct {
+	// Reboot signals when the machine should be rebooted
+	Reboot chan bool
+}
+
 // CurrentState describes the current running state of the application
 type CurrentState struct {
 	ServerStartTime    time.Time `json:"starttime"`
@@ -24,13 +30,14 @@ type WifiUpdateRequest struct {
 	Passphrase string `json:"passphrase"`
 }
 
+// WifiUpdateResponse describes the response to update the Wifi credentials
 type WifiUpdateResponse struct {
 	Status      int    `json:"status"`
 	Description string `json:"description"`
 }
 
 // GetCurrentState gets the current running state of the application
-func GetCurrentState(rw http.ResponseWriter, req *http.Request) {
+func (s *SystemAPI) GetCurrentState(rw http.ResponseWriter, req *http.Request) {
 
 	//	Find out if the device is currently running:
 	activityDB := data.ActivityDB{
@@ -56,7 +63,7 @@ func GetCurrentState(rw http.ResponseWriter, req *http.Request) {
 }
 
 // UpdateWifi updates the wifi credentials for the machine
-func UpdateWifi(rw http.ResponseWriter, req *http.Request) {
+func (s *SystemAPI) UpdateWifi(rw http.ResponseWriter, req *http.Request) {
 
 	//	Decode the request if it was a POST:
 	request := WifiUpdateRequest{}
@@ -68,7 +75,7 @@ func UpdateWifi(rw http.ResponseWriter, req *http.Request) {
 
 	//	Send the request to the wifi helper:
 	response := WifiUpdateResponse{Status: 200, Description: "Successful.  Rebooting..."}
-	err = network.UpdateWifiCredentials(request.SSID, request.Passphrase)
+	err = network.UpdateWifiCredentials(request.SSID, request.Passphrase, s.Reboot)
 	if err != nil {
 		sendErrorResponse(rw, err, http.StatusInternalServerError)
 		return
@@ -77,7 +84,4 @@ func UpdateWifi(rw http.ResponseWriter, req *http.Request) {
 	//	Serialize to JSON & return the response:
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(rw).Encode(response)
-
-	//	Reboot the machine
-	go network.RebootMachine()
 }

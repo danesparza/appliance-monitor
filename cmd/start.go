@@ -16,6 +16,7 @@ import (
 	"github.com/danesparza/appliance-monitor/data"
 	"github.com/danesparza/appliance-monitor/network"
 	"github.com/danesparza/appliance-monitor/sensordata"
+	"github.com/danesparza/appliance-monitor/system"
 	"github.com/danesparza/appliance-monitor/zeroconf"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -47,12 +48,16 @@ func start(cmd *cobra.Command, args []string) {
 		log.Println("[INFO] Using config file:", viper.ConfigFileUsed())
 	}
 
+	//	Start the reboot helper
+	systemapi := &api.SystemAPI{Reboot: make(chan bool)}
+	go system.ListenForReboots(systemapi.Reboot)
+
 	//	See if we need to reset the host name and reboot:
 	name, _ := os.Hostname()
 	properhostname := fmt.Sprintf("%s-%s", "am", getMacAddr())
 
 	if name != properhostname {
-		err := network.ResetHostname(properhostname)
+		err := network.ResetHostname(properhostname, systemapi.Reboot)
 		if err != nil {
 			log.Printf("[ERROR] There was a problem resetting the host name: %v", err)
 			return
@@ -104,8 +109,8 @@ func start(cmd *cobra.Command, args []string) {
 	Router.HandleFunc("/config/{name}", configapi.RemoveConfigItem).Methods("DELETE")
 
 	//	System information
-	Router.HandleFunc("/system/state", api.GetCurrentState).Methods("GET")
-	Router.HandleFunc("/system/wifi", api.UpdateWifi).Methods("POST")
+	Router.HandleFunc("/system/state", systemapi.GetCurrentState).Methods("GET")
+	Router.HandleFunc("/system/wifi", systemapi.UpdateWifi).Methods("POST")
 
 	//	System resets
 	Router.HandleFunc("/reset/network", nil)
