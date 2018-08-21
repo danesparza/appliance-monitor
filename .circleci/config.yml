@@ -140,8 +140,8 @@ jobs:
          command: go get github.com/jteeuwen/go-bindata/...;go get github.com/elazarl/go-bindata-assetfs/...;
 
       - run:
-         name: Get windows specific dependencies
-         command: env GOOS=windows go get -d -v $PACKAGE_PATH/...
+         name: Get ARM specific dependencies
+         command: env GOARCH=arm go get -d -v $PACKAGE_PATH/...
 
       - run:
          name: Get other dependencies
