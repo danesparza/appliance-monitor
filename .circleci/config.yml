@@ -1,0 +1,189 @@
+version: 2
+jobs:
+  jsbuild:
+    docker:
+      - image: circleci/node:9.7.1-stretch-browsers
+    steps:
+      - run:
+          name: Download and unpack UI
+          command: cd /tmp; wget https://github.com/danesparza/appliance-monitor-ui/archive/master.zip; unzip master.zip; cp -r appliance-monitor-ui-master/. /home/circleci/project/; cd /home/circleci/project;
+
+      # Restore our dependency cache
+      - restore_cache:
+          keys: 
+            - node-cache-{{ checksum "package.json" }}
+            - node_cache- 
+
+      # Execute the build process
+      - run:
+          name: Fetch and Install packages
+          command: yarn
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: node-cache-{{ checksum "package.json" }}
+
+      - run: 
+          name: Create optimized production build
+          command: yarn build
+
+      # Execute the packaging process
+      - run: 
+          name: Emit build number
+          command: echo "{\"version\":$CIRCLE_BUILD_NUM}" >> build/build.json
+
+      # Persist the built (unzipped) app to the workspace
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build
+
+  build:
+    docker:
+      - image: circleci/golang:1.9.4
+    environment:
+      PACKAGE_PATH: "github.com/danesparza/appliance-monitor"
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: /tmp/workspace      
+
+      - run:
+         name: Get static assets compilers
+         command: go get github.com/jteeuwen/go-bindata/...;go get github.com/elazarl/go-bindata-assetfs/...;
+
+      - run:
+         name: Get windows specific dependencies
+         command: env GOOS=windows go get -d -v $PACKAGE_PATH/...
+
+      - run:
+         name: Get other dependencies
+         command: go get -t -d -v $PACKAGE_PATH/...
+
+      - run: 
+         name: Compile the UI to static assets
+         command: cd /tmp/workspace; go-bindata-assetfs -pkg cmd build/...; mv bindata.go /go/src/github.com/danesparza/appliance-monitor/cmd;
+
+      - run:
+         name: Perform code analysis
+         command: go vet -x $PACKAGE_PATH/...
+
+      - run:
+         name: Perform basic build
+         command: go install $PACKAGE_PATH/...      
+
+      # Persist the db testing binary to the workspace
+      - persist_to_workspace:
+          root: /go/bin
+          paths:
+            - appliance-monitor
+
+      # Persist the static assets to the workspace
+      - persist_to_workspace:
+          root: /go/src/github.com/danesparza/appliance-monitor/cmd
+          paths:
+            - bindata.go      
+
+  test:
+    docker:
+      - image: circleci/golang:1.9.4        
+      - image: circleci/mysql:5.6.36
+        environment:
+            MYSQL_ALLOW_EMPTY_PASSWORD: true
+            MYSQL_DATABASE: circle_test        
+    environment:
+      PACKAGE_PATH: "github.com/danesparza/appliance-monitor"
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: /tmp/workspace
+
+      - run:
+         name: Get static assets compilers
+         command: go get github.com/jteeuwen/go-bindata/...;go get github.com/elazarl/go-bindata-assetfs/...;
+
+      - run:
+         name: Get other dependencies
+         command: go get -t -d -v $PACKAGE_PATH/...      
+      
+      - run:
+         name: Copy static assets file
+         command: cp /tmp/workspace/bindata.go /go/src/$PACKAGE_PATH/cmd
+
+      - run:
+         name: Run tests
+         command: go test -v -race $PACKAGE_PATH/...
+
+  release:
+    docker:
+      - image: circleci/golang:1.9.4
+    environment:
+      PACKAGE_PATH: "github.com/danesparza/appliance-monitor"
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+
+      - run:
+         name: Get compiler tool
+         command: go get github.com/mitchellh/gox
+
+      - run:
+         name: Get release tool
+         command: go get github.com/tcnksm/ghr
+
+      - run:
+         name: Get static assets compilers
+         command: go get github.com/jteeuwen/go-bindata/...;go get github.com/elazarl/go-bindata-assetfs/...;
+
+      - run:
+         name: Get windows specific dependencies
+         command: env GOOS=windows go get -d -v $PACKAGE_PATH/...
+
+      - run:
+         name: Get other dependencies
+         command: go get -t -d -v $PACKAGE_PATH/...
+
+      - run:
+         name: Copy static assets file
+         command: cp /tmp/workspace/bindata.go /go/src/$PACKAGE_PATH/cmd
+
+      - run:
+         name: Create binaries for all platforms
+         command: mkdir -p /tmp/binaries; gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.BuildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.CommitID=$CIRCLE_SHA1" -output "/tmp/binaries/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...    
+
+      # Still need to add debian package builder from old build system
+
+      # Persist the release binaries to the workspace
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - binaries
+
+      # Persist the release binaries as artifacts
+      - store_artifacts:
+          path: /tmp/binaries
+
+      - run: 
+         name: Push the release to Github
+         command: ghr -prerelease -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME v1.0.$CIRCLE_BUILD_NUM /tmp/binaries/ || true
+
+workflows:
+  version: 2
+
+  # Build and deploy workflow
+  build_deploy:
+    jobs:
+      - jsbuild
+      - build:
+          requires:
+            - jsbuild
+      - test:
+          requires:
+            - build
+      - release:
+          requires:
+            - build
