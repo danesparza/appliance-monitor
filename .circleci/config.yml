@@ -145,6 +145,10 @@ jobs:
          command: go get github.com/jteeuwen/go-bindata/...;go get github.com/elazarl/go-bindata-assetfs/...;
 
       - run:
+         name: Get utilities
+         command: go get github.com/danesparza/tokenreplace
+
+      - run:
          name: Get ARM specific dependencies
          command: env GOARCH=arm go get -d -v $PACKAGE_PATH/...
 
