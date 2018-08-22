@@ -130,7 +130,7 @@ jobs:
 
       - run:
           name: Setup Environment Variables
-          command: echo 'export DEBIAN_PACKAGE_NAME="appliance-monitor-1.0.$CIRCLE_BUILD_NUM_armhf"' >> $BASH_ENV          
+          command: echo 'export DEBIAN_PACKAGE_NAME="appliance-monitor-1.0.${CIRCLE_BUILD_NUM}_armhf"' >> $BASH_ENV          
 
       - run:
          name: Get compiler tool
@@ -162,7 +162,7 @@ jobs:
 
       - run:
          name: Setup the debian package
-         command: mkdir -p "/tmp/packagestage"; cp -r "${PROJECT_DIR}/dist" "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}"; chmod 755 "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/postinst"; chmod 755 "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/prerm"/home/circleci/project/; tokenreplace -file "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/control" -token="{build}" -replacement="${CIRCLE_BUILD_NUM}"; 
+         command: mkdir -p "/tmp/packagestage"; cp -r "${PROJECT_DIR}/dist" "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}"; chmod 755 "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/postinst"; chmod 755 "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/prerm"; tokenreplace -file "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/control" -token="{build}" -replacement="${CIRCLE_BUILD_NUM}"; 
 
       - run:
          name: Create the debian package
