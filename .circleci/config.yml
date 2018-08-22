@@ -122,6 +122,7 @@ jobs:
       - image: circleci/golang:1.9.4
     environment:
       PACKAGE_PATH: "github.com/danesparza/appliance-monitor"
+      DEBIAN_PACKAGE_NAME: "appliance-monitor-1.0.${CIRCLE_BUILD_NUM}_armhf"
     steps:
       - checkout
       - attach_workspace:
@@ -155,7 +156,13 @@ jobs:
          name: Create binaries for all platforms
          command: mkdir -p /tmp/binaries; gox -os="linux" -arch="arm" -ldflags "-X $PACKAGE_PATH/cmd.BuildVersion=1.0.$CIRCLE_BUILD_NUM -X $PACKAGE_PATH/cmd.CommitID=$CIRCLE_SHA1" -output "/tmp/binaries/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" $PACKAGE_PATH/...    
 
-      # Still need to add debian package builder from old build system
+      - run:
+         name: Setup the debian package
+         command: mkdir -p "/tmp/packagestage"; cp -r "${PROJECT_DIR}/dist" "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}"; chmod 755 "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/postinst"; chmod 755 "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/prerm"/home/circleci/project/; tokenreplace -file "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/DEBIAN/control" -token="{build}" -replacement="${CIRCLE_BUILD_NUM}"; 
+
+      - run:
+         name: Create the debian package
+         command: mkdir -p "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/usr/bin"; cp "/tmp/binaries/appliance-monitor_linux_arm" "/tmp/packagestage/${DEBIAN_PACKAGE_NAME}/usr/bin/appliance-monitor"; cd /tmp/packagestage; dpkg -b "${DEBIAN_PACKAGE_NAME}"; mv *.deb "/tmp/binaries";
 
       # Persist the release binaries to the workspace
       - persist_to_workspace:
