@@ -464,3 +464,26 @@ func TestConfig_Remove_ItemDoesntExist_NoErrors(t *testing.T) {
 		t.Errorf("Set then remove failed: Should have removed a config item without error: %s", err)
 	}
 }
+
+func TestConfig_GetAllDevices_NoItems_Successful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	NO ITEMS STORED
+
+	//	Act
+	response, err := db.GetAllDevices()
+
+	//	Assert
+	if err != nil {
+		t.Errorf("GetAllDevices failed: Should have returned config items without error: %s", err)
+	}
+
+	if len(response) != 0 {
+		t.Errorf("GetAllDevices failed: Should have returned no devices but returned %v instead", len(response))
+	}
+}
