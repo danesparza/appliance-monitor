@@ -487,3 +487,44 @@ func TestConfig_GetAllDevices_NoItems_Successful(t *testing.T) {
 		t.Errorf("GetAllDevices failed: Should have returned no devices but returned %v instead", len(response))
 	}
 }
+
+func TestConfig_GetAllDevices_WithItems_Successful(t *testing.T) {
+	//	Arrange
+	filename := "testing.db"
+	defer os.Remove(filename)
+	defer viper.Reset()
+
+	db := data.ConfigDB{
+		Database: filename}
+
+	//	Try adding some devices:
+	db.AddOrUpdateDevice(data.Device{
+		Name: "Unit test 1",
+		Type: "system",
+	})
+
+	db.AddOrUpdateDevice(data.Device{
+		Name:      "Unit test 2",
+		Type:      "hs110",
+		IPAddress: "192.168.1.99",
+	})
+
+	db.AddOrUpdateDevice(data.Device{
+		Name:      "Unit test 2",
+		Type:      "hs110",
+		IPAddress: "192.168.1.85",
+	})
+	numberOfItems := 3
+
+	//	Act
+	response, err := db.GetAllDevices()
+
+	//	Assert
+	if err != nil {
+		t.Errorf("GetAllDevices failed: Should have returned config items without error: %s", err)
+	}
+
+	if len(response) != numberOfItems {
+		t.Errorf("GetAllDevices failed: Should have returned %d config items but returned %v instead", numberOfItems, len(response))
+	}
+}
